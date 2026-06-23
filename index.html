@@ -1,0 +1,4396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高考志愿填报助手 — AI对话引导</title>
+<style>
+/* ============ CSS Variables & Theme ============ */
+:root {
+  --bg: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-chat: #0f1724;
+  --text: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59,130,246,0.3);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --border: rgba(255,255,255,0.06);
+  --border-light: rgba(255,255,255,0.1);
+  --glass: rgba(15,23,36,0.85);
+  --glass-border: rgba(255,255,255,0.08);
+  --msg-ai-bg: #1a2332;
+  --msg-user-bg: #1e3a5f;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --font-mono: 'Cascadia Code','Fira Code','JetBrains Mono',monospace;
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ============ Light Theme ============ */
+[data-theme="light"] {
+  --bg: #f0f4f8;
+  --bg-secondary: #ffffff;
+  --bg-chat: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --text: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-glow: rgba(37,99,235,0.15);
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --border: rgba(0,0,0,0.1);
+  --border-light: rgba(0,0,0,0.06);
+  --glass: rgba(255,255,255,0.9);
+  --glass-border: rgba(0,0,0,0.08);
+  --msg-ai-bg: #f1f5f9;
+  --msg-user-bg: #dbeafe;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --input-bg: #ffffff;
+  --hover-bg: rgba(0,0,0,0.04);
+}
+[data-theme="light"] body::before {
+  background:
+    linear-gradient(rgba(59,130,246,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+[data-theme="light"] .msg-ai { background: var(--msg-ai-bg); border-color: var(--border-light); }
+[data-theme="light"] .msg-user { background: var(--msg-user-bg); }
+[data-theme="light"] .msg-user .msg-bubble { color: #1e3a5f; }
+[data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.4); }
+[data-theme="light"] .inline-table-wrapper { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .inline-table th { background: #eff6ff; }
+[data-theme="light"] .inline-table tr:hover td { background: #f8fafc; }
+[data-theme="light"] .app-header { background: rgba(255,255,255,0.9); }
+[data-theme="light"] .quick-reply { background: var(--bg-card); }
+[data-theme="light"] .btn:hover { background: rgba(0,0,0,0.04); }
+[data-theme="light"] .btn-icon:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+[data-theme="light"] .msg-code-block { background: #f1f5f9; color: #334155; }
+[data-theme="light"] .modal-table th { background: #eff6ff; }
+[data-theme="light"] .modal-table tr:hover td { background: #f8fafc; }
+[data-theme="light"] .modal-table input[type="text"],
+[data-theme="light"] .modal-table textarea,
+[data-theme="light"] .modal-table select { background: #ffffff; }
+[data-theme="light"] .candidate-edit-table th { background: #eff6ff; }
+[data-theme="light"] .candidate-edit-table tr:hover td { background: #f8fafc; }
+[data-theme="light"] .candidate-edit-table input { background: #ffffff; }
+[data-theme="light"] .paste-area { background: #ffffff; }
+[data-theme="light"] .manual-entry input,
+[data-theme="light"] .manual-entry select { background: #ffffff; }
+[data-theme="light"] .search-link-card { background: var(--bg-card); }
+[data-theme="light"] .chat-input { background: #ffffff; }
+[data-theme="light"] .t1-search-box { background: #ffffff; }
+[data-theme="light"] .theme-toggle-btn { background: var(--bg-card); }
+[data-theme="light"] .search-confirm-item { background: var(--bg-card); }
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed; inset:0; z-index:-1;
+  background:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ============ Layout ============ */
+.app-container {
+  max-width: 900px;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============ Header ============ */
+.app-header {
+  padding: 12px 20px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  flex-shrink: 0;
+}
+.app-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-title .dot { width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse-dot 2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Stage indicator */
+.stage-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.stage-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  border: 2px solid var(--border-light);
+  color: var(--text-muted);
+  transition: all var(--transition);
+  position: relative;
+}
+.stage-dot.active { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.1); }
+.stage-dot.done { border-color: var(--success); color: var(--success); background: rgba(16,185,129,0.1); }
+.stage-connector {
+  width: 16px; height: 2px;
+  background: var(--border-light);
+}
+.stage-connector.done { background: var(--success); }
+
+.header-actions { display:flex; gap:8px; }
+.btn-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  transition: all var(--transition);
+}
+.btn-icon:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+/* ============ Chat Area ============ */
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+.chat-container::-webkit-scrollbar { width: 4px; }
+.chat-container::-webkit-scrollbar-track { background: transparent; }
+.chat-container::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+/* Message bubble */
+.msg {
+  max-width: 85%;
+  animation: msgIn 0.3s ease-out;
+}
+@keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.msg.ai { align-self: flex-start; }
+.msg.user { align-self: flex-end; }
+.msg-bubble {
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  line-height: 1.65;
+  font-size: 14px;
+  word-break: break-word;
+}
+.msg.ai .msg-bubble { background: var(--msg-ai-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.msg.user .msg-bubble { background: var(--msg-user-bg); border: 1px solid rgba(59,130,246,0.2); border-bottom-right-radius: 4px; }
+.msg-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
+.msg.user .msg-time { text-align: right; }
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex; gap: 4px; padding: 8px 0;
+}
+.typing-indicator span {
+  width: 6px; height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite both;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-6px); } }
+
+/* ============ Quick Replies ============ */
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+.quick-reply {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  background: var(--glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.quick-reply:hover { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.1); }
+.quick-reply.primary { border-color: var(--accent); background: rgba(59,130,246,0.15); color: var(--accent); }
+.quick-reply.freechat { border-style: dashed; border-color: var(--text-muted); color: var(--text-muted); font-size: 11px; }
+.quick-reply.freechat:hover { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.08); }
+
+/* ============ Input Area ============ */
+.input-area {
+  padding: 12px 20px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.chat-input {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-input::placeholder { color: var(--text-muted); }
+.btn-send {
+  width: 42px; height: 42px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.btn-send:hover { filter: brightness(1.15); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ Inline Table (chat) ============ */
+.inline-table-wrapper {
+  margin: 8px 0;
+  overflow-x: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.2);
+}
+.inline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 800px;
+}
+.inline-table th {
+  background: rgba(59,130,246,0.1);
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom: 2px solid var(--border-light);
+  white-space: nowrap;
+}
+.inline-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.inline-table tr:hover td { background: rgba(255,255,255,0.02); }
+.inline-table .tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600; }
+.inline-table .tag-chong { background:rgba(245,158,11,0.15); color:var(--warning); }
+.inline-table .tag-wen { background:rgba(59,130,246,0.15); color:var(--accent); }
+.inline-table .tag-bao { background:rgba(16,185,129,0.15); color:var(--success); }
+.inline-table .tag-taichong { background:rgba(239,68,68,0.15); color:var(--danger); }
+
+/* Global tag styles for candidate summary */
+.tag-chong { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(245,158,11,0.15); color:var(--warning); }
+.tag-wen { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(59,130,246,0.15); color:var(--accent); }
+.tag-bao { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(16,185,129,0.15); color:var(--success); }
+
+/* ============ Content Blocks in Chat ============ */
+.msg-content-block {
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  background: rgba(59,130,246,0.05);
+}
+.msg-content-block.warning { border-left-color: var(--warning); background: rgba(245,158,11,0.05); }
+.msg-content-block.danger { border-left-color: var(--danger); background: rgba(239,68,68,0.05); }
+.msg-content-block.success { border-left-color: var(--success); background: rgba(16,185,129,0.05); }
+
+.msg-code-block {
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--border);
+}
+
+/* Inline links */
+.msg-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* ============ Modals ============ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  max-width: 95vw;
+  max-height: 90vh;
+  width: 1100px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h2 { font-size: 16px; font-weight: 600; }
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+.modal-body::-webkit-scrollbar { width:4px; }
+.modal-body::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:2px; }
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.btn {
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--glass);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.btn:hover { background: rgba(255,255,255,0.05); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* Modal table */
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.modal-table th {
+  background: rgba(59,130,246,0.1);
+  padding: 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom: 2px solid var(--border-light);
+  white-space: nowrap;
+  position: sticky; top: 0;
+}
+.modal-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.modal-table tr:hover td { background: rgba(255,255,255,0.02); }
+.modal-table input[type="text"], .modal-table textarea, .modal-table select {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+}
+.modal-table textarea { resize: vertical; min-height: 36px; }
+.modal-table select { cursor: pointer; }
+
+/* ============ Search Hub / Data Entry (Stage 4) ============ */
+.search-hub { padding: 0; }
+.search-section { margin-bottom: 20px; }
+.search-section h3 {
+  font-size: 14px; font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.search-links {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 12px;
+}
+.search-link-card {
+  flex: 1; min-width: 200px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.search-link-card:hover {
+  border-color: var(--accent);
+  background: rgba(59,130,246,0.05);
+}
+.search-link-card .label {
+  font-size: 13px; font-weight: 600;
+  color: var(--accent);
+  display: block; margin-bottom: 2px;
+}
+.search-link-card .hint {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Paste area */
+.paste-area {
+  width: 100%; min-height: 120px;
+  background: var(--bg);
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+.paste-area:focus { border-color: var(--accent); outline: none; }
+.paste-hint {
+  font-size: 11px; color: var(--text-muted);
+  margin-bottom: 6px; line-height: 1.5;
+}
+.parse-result {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: var(--radius);
+  font-size: 12px; color: var(--success);
+  display: none;
+}
+
+/* Manual entry form */
+.manual-entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.manual-entry input, .manual-entry select {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.manual-entry input:focus, .manual-entry select:focus {
+  border-color: var(--accent); outline: none;
+}
+.manual-entry input::placeholder { color: var(--text-muted); }
+
+/* Candidate edit table */
+.candidate-edit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.candidate-edit-table th {
+  background: rgba(59,130,246,0.1);
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+  position: sticky; top: 0;
+}
+.candidate-edit-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.candidate-edit-table tr:hover td { background: rgba(255,255,255,0.02); }
+.candidate-edit-table input {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  width: 100%;
+  font-family: inherit;
+}
+.candidate-edit-table input:focus { border-color: var(--accent); outline: none; }
+
+.k-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.k-badge.chong { background: rgba(245,158,11,0.15); color: var(--warning); }
+.k-badge.wen { background: rgba(16,185,129,0.15); color: var(--success); }
+.k-badge.bao { background: rgba(59,130,246,0.15); color: var(--accent); }
+.k-badge.taichong { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+.btn-danger-sm {
+  padding: 2px 8px; font-size: 10px;
+  border: 1px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.1);
+  color: var(--danger);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-danger-sm:hover { background: rgba(239,68,68,0.2); }
+
+.candidate-summary {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(59,130,246,0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Smart search status */
+.search-status {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.search-status.searching {
+  background: rgba(59,130,246,0.06);
+  border: 1px solid rgba(59,130,246,0.15);
+  color: var(--primary);
+}
+.search-status.success {
+  background: rgba(16,185,129,0.06);
+  border: 1px solid rgba(16,185,129,0.15);
+}
+.search-status.warning {
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.15);
+  color: var(--warning);
+}
+.search-status.error {
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.15);
+  color: var(--danger);
+}
+
+/* Spinner */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(59,130,246,0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ============ Declaration blocks ============ */
+.declaration-block {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: rgba(245,158,11,0.05);
+  border: 1px solid rgba(245,158,11,0.15);
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.declaration-block strong { color: var(--warning); }
+
+/* Report section markers */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 12px 0;
+}
+
+/* ============ Responsive ============ */
+@media (max-width: 768px) {
+  .app-container { max-width: 100%; }
+  .msg { max-width: 92%; }
+  .stage-indicator { display: none; }
+  .modal { width: 100%; max-width: 100%; border-radius: 0; }
+}
+
+/* Print styles */
+@media print {
+  body { background: white; color: black; }
+  .app-header, .input-area, .stage-indicator, .header-actions { display: none; }
+  .chat-container { overflow: visible; }
+  .msg-bubble { background: white; border: 1px solid #ccc; color: black; }
+  .declaration-block { background: #fff3cd; border-color: #ffc107; }
+
+  /* 报告按钮 */
+  .btn-icon:last-child { display: none; }
+}
+/* ============ T1 Toggle Buttons ============ */
+.t1-toggle {
+  padding: 4px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 48px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.t1-toggle:hover { border-color: var(--accent); color: var(--text); }
+.t1-btn-yes { background: rgba(16,185,129,0.15); border-color: var(--success); color: var(--success); }
+.t1-btn-no { background: rgba(239,68,68,0.1); border-color: var(--danger); color: var(--danger); }
+.t1-btn-maybe { background: rgba(245,158,11,0.1); border-color: var(--warning); color: var(--warning); }
+
+/* ============ T2 Input ============ */
+.t2-reason { font-size: 12px; }
+
+/* ============ btn-sm ============ */
+.btn-sm { padding:4px 10px; font-size:11px; border-radius:6px; }
+
+/* ============ Toast Notification ============ */
+.toast-container {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; max-width: 90vw;
+}
+.toast {
+  padding: 10px 20px; border-radius: 10px; font-size: 13px;
+  backdrop-filter: blur(16px); box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s forwards;
+  pointer-events: auto; white-space: nowrap;
+}
+.toast-success { background: rgba(16,185,129,0.92); color: #fff; }
+.toast-warning { background: rgba(245,158,11,0.92); color: #fff; }
+.toast-error   { background: rgba(239,68,68,0.92); color: #fff; }
+.toast-info    { background: rgba(59,130,246,0.92); color: #fff; }
+@keyframes toast-in  { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toast-out { from { opacity:1; } to { opacity:0; transform:translateY(-12px); } }
+
+/* ============ Network Status Bar ============ */
+.network-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+  padding: 6px 16px; font-size: 12px; text-align: center;
+  transform: translateY(-100%); transition: transform 0.3s ease;
+  pointer-events: none;
+}
+.network-bar.show { transform: translateY(0); }
+.network-bar.offline { background: rgba(239,68,68,0.95); color: #fff; }
+.network-bar.online  { background: rgba(16,185,129,0.95); color: #fff; }
+
+/* ============ Table Scroll Wrapper (mobile) ============ */
+.table-scroll-wrapper {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  margin: 12px 0; position: relative;
+  border-radius: var(--radius); border: 1px solid var(--border);
+}
+.table-scroll-wrapper::after {
+  content: '← 左右滑动查看完整表格 →';
+  position: sticky; bottom: 0; left: 0; right: 0;
+  display: none; text-align: center; font-size: 11px;
+  color: var(--text-muted); padding: 4px 0; background: var(--bg-card);
+  border-top: 1px solid var(--border-light);
+}
+@media (max-width: 768px) {
+  .table-scroll-wrapper::after { display: block; }
+  .inline-table, .candidate-edit-table { min-width: 700px; }
+}
+
+/* ============ Progress Bar ============ */
+.progress-bar-container {
+  padding: 8px 20px; background: var(--glass);
+  border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+  position: relative; cursor: pointer;
+}
+.progress-bar-track {
+  height: 4px; border-radius: 2px; background: var(--border-light);
+  overflow: hidden; position: relative;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: 2px; background: var(--accent);
+  transition: width 0.4s ease;
+}
+.progress-bar-markers {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 2;
+}
+.progress-bar-marker {
+  position: absolute; top: -3px; width: 2px; height: 10px;
+  border-radius: 1px; background: var(--text-muted); opacity: 0.4;
+  transition: opacity 0.3s;
+}
+.progress-bar-marker.done {
+  background: var(--success); opacity: 0.7;
+}
+.progress-bar-marker.current {
+  background: var(--accent); opacity: 1;
+  box-shadow: 0 0 6px var(--accent);
+}
+.progress-bar-label {
+  font-size: 11px; color: var(--text-muted); margin-top: 6px;
+  transition: color 0.2s;
+}
+.progress-bar-container:hover .progress-bar-label {
+  color: var(--text);
+}
+.progress-bar-tooltip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  font-size: 12px; white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 100;
+}
+.progress-bar-container:hover .progress-bar-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.progress-bar-tooltip-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 0; color: var(--text-muted);
+  transition: color 0.2s;
+}
+.progress-bar-tooltip-row.done { color: var(--success); }
+.progress-bar-tooltip-row.current {
+  color: var(--text); font-weight: 600;
+}
+.progress-bar-tooltip-row .tip-icon { width: 14px; text-align: center; font-size: 10px; }
+.progress-bar-tooltip-row .tip-stage { color: var(--text-muted); font-size: 10px; width: 16px; }
+.progress-bar-tooltip-row.current .tip-stage { color: var(--accent); }
+[data-theme="light"] .progress-bar-tooltip {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ============ Theme Toggle in Header ============ */
+.theme-toggle-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--bg-card);
+  cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.theme-toggle-btn:hover { border-color: var(--accent); background: var(--hover-bg); }
+
+/* ============ T1 Search Box ============ */
+.t1-search-box {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--input-bg); color: var(--text);
+  font-size: 13px; margin-bottom: 12px; font-family: inherit;
+}
+.t1-search-box:focus { outline: none; border-color: var(--accent); }
+
+/* ============ T2 Group Collapse ============ */
+.t2-group-header {
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.t2-group-header .collapse-arrow {
+  display: inline-block; transition: transform 0.2s ease;
+  font-size: 12px; color: var(--text-muted);
+}
+.t2-group-header.collapsed .collapse-arrow { transform: rotate(-90deg); }
+.t2-group-body { overflow: hidden; transition: max-height 0.3s ease; }
+.t2-group-body.collapsed { max-height: 0 !important; }
+
+/* ============ Search Result Confirm ============ */
+.search-confirm-list {
+  max-height: 320px; overflow-y: auto; margin: 8px 0;
+}
+.search-confirm-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; font-size: 12px;
+  border: 1px solid var(--border-light); margin-bottom: 4px;
+  background: var(--bg-card);
+}
+.search-confirm-item label { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; }
+.search-confirm-item .k-badge { font-size: 11px; }
+
+/* ============ Sortable Table Headers ============ */
+.sortable-th {
+  cursor: pointer; user-select: none; position: relative;
+}
+.sortable-th:hover { background: var(--hover-bg); }
+.sortable-th .sort-arrow { font-size: 10px; margin-left: 4px; color: var(--text-muted); }
+.sortable-th.sort-asc .sort-arrow, .sortable-th.sort-desc .sort-arrow { color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-title"><span class="dot"></span>高考志愿填报助手</div>
+    <div class="stage-indicator" id="stageIndicator">
+      <div class="stage-dot" data-stage="0" onclick="navigateToStage(0)">0</div>
+      <div class="stage-connector"></div>
+      <div class="stage-dot" data-stage="1" onclick="navigateToStage(1)">1</div>
+      <div class="stage-connector"></div>
+      <div class="stage-dot" data-stage="2" onclick="navigateToStage(2)">2</div>
+      <div class="stage-connector"></div>
+      <div class="stage-dot" data-stage="3" onclick="navigateToStage(3)">3</div>
+      <div class="stage-connector"></div>
+      <div class="stage-dot" data-stage="4" onclick="navigateToStage(4)">4</div>
+      <div class="stage-connector"></div>
+      <div class="stage-dot" data-stage="5" onclick="navigateToStage(5)">5</div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
+      <button class="btn-icon" onclick="resetAll()" title="重置">🔄</button>
+      <button class="btn-icon" onclick="exportCSV()" title="导出CSV">📥</button>
+      <button class="btn-icon" onclick="window.print()" title="打印报告">🖨️</button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar-container" id="progressBarWrap">
+    <div class="progress-bar-track" id="progressBarTrack">
+      <div class="progress-bar-fill" id="progressBarFill" style="width:0%"></div>
+      <div class="progress-bar-markers" id="progressBarMarkers"></div>
+    </div>
+    <div class="progress-bar-label" id="progressBarLabel">准备中…</div>
+    <div class="progress-bar-tooltip" id="progressBarTooltip"></div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-container" id="chatContainer"></div>
+
+  <!-- Quick replies -->
+  <div id="quickRepliesContainer" style="padding:0 20px 8px;"></div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-row">
+      <textarea class="chat-input" id="chatInput" placeholder="输入你的想法，或点击上方快捷回复..." rows="1" onkeydown="handleInputKey(event)"></textarea>
+      <button class="btn-send" id="btnSend" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- T1 Modal -->
+<div class="modal-overlay" id="t1Modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📋 T1 专业初筛表（12门类·95专业类）</h2>
+      <button class="btn-icon" onclick="closeModal('t1Modal')">✕</button>
+    </div>
+    <div class="modal-body" id="t1ModalBody"></div>
+    <div class="modal-footer">
+      <span style="color:var(--text-muted);font-size:12px;flex:1;">勾选「是」= 感兴趣的专业类，原因可选填</span>
+      <button class="btn" onclick="closeModal('t1Modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveT1AndClose()">保存并关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- T2 Modal -->
+<div class="modal-overlay" id="t2Modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📋 T2 个人情况分析表（22项·5组）</h2>
+      <button class="btn-icon" onclick="closeModal('t2Modal')">✕</button>
+    </div>
+    <div class="modal-body" id="t2ModalBody"></div>
+    <div class="modal-footer">
+      <span style="color:var(--text-muted);font-size:12px;flex:1;">4组每组至少1行非空即视为完成</span>
+      <button class="btn" onclick="closeModal('t2Modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveT2AndClose()">保存并关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- T3 / Report Modal -->
+<div class="modal-overlay" id="t3Modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="t3ModalTitle">📊 候选志愿草表</h2>
+      <button class="btn-icon" onclick="closeModal('t3Modal')">✕</button>
+    </div>
+    <div class="modal-body" id="t3ModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('t3Modal')">关闭</button>
+      <button class="btn btn-primary" onclick="exportT3CSV()">导出CSV</button>
+      <button class="btn" onclick="window.print()">打印</button>
+    </div>
+  </div>
+</div>
+
+<!-- T4 Data Entry Hub (Stage 4) -->
+<div class="modal-overlay" id="t4Modal" style="display:none">
+  <div class="modal" style="max-width:1000px;">
+    <div class="modal-header">
+      <h2>📊 候选草表 — 数据检索与录入</h2>
+      <button class="btn-icon" onclick="closeModal('t4Modal')">✕</button>
+    </div>
+    <div class="modal-body search-hub" id="t4ModalBody">
+      <!-- Dynamic content rendered by showSearchHub() -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('t4Modal')">取消</button>
+      <button class="btn btn-primary" onclick="finalizeCandidates()">✅ 生成候选草表</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+// Config check — friendly warning if config.js is missing (public repo deployment)
+if (!window.APP_CONFIG || !window.APP_CONFIG.botId || window.APP_CONFIG.botId.indexOf('你的') === 0) {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0f172a;color:#94a3b8;font-family:system-ui;padding:24px;">'
+      + '<div style="max-width:480px;text-align:center;">'
+      + '<div style="font-size:48px;margin-bottom:16px;">\u26A0\uFE0F</div>'
+      + '<h2 style="color:#f1f5f9;font-size:20px;margin-bottom:12px;">\u914D\u7F6E\u6587\u4EF6\u7F3A\u5931</h2>'
+      + '<p style="line-height:1.7;margin-bottom:16px;">\u672A\u68C0\u6D4B\u5230\u6709\u6548\u7684 <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#38bdf8;">config.js</code>\u3002</p>'
+      + '<p style="line-height:1.7;margin-bottom:8px;">\u8BF7\u590D\u5236 <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#38bdf8;">config.example.js</code> \u5E76\u91CD\u547D\u540D\u4E3A <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#38bdf8;">config.js</code>\uFF0C</p>'
+      + '<p style="line-height:1.7;margin-bottom:16px;">\u586B\u5165\u4F60\u5728\u706B\u5C71\u5F15\u64CE\u521B\u5EFA\u7684 Bot-ID \u548C API Key\u3002</p>'
+      + '<p style="font-size:13px;color:#64748b;">\u8BE6\u89C1 worker/volcano-bot-guide.md</p>'
+      + '</div></div>';
+  });
+  throw new Error('config.js not configured');
+}
+// ============================================================================
+// SECTION 1: DATA CONSTANTS — 完全复制技能包数据
+// ============================================================================
+
+// 31省考试院数据 (province_exam_authority.md)
+const PROVINCE_AUTHORITY = {
+  '安徽': { name:'安徽省教育招生考试院', url:'https://www.ahzsks.cn/' },
+  '北京': { name:'北京教育考试院', url:'https://www.bjeea.cn/' },
+  '重庆': { name:'重庆市教育考试院', url:'https://www.cqksy.cn/' },
+  '福建': { name:'福建省教育考试院', url:'https://www.eeafj.cn/' },
+  '甘肃': { name:'甘肃省教育考试院', url:'https://www.ganseea.cn/' },
+  '广东': { name:'广东省教育考试院', url:'https://eea.gd.gov.cn/' },
+  '广西': { name:'广西招生考试院', url:'https://www.gxeea.cn/' },
+  '贵州': { name:'贵州省招生考试院', url:'http://zsksy.guizhou.gov.cn/' },
+  '海南': { name:'海南省考试局', url:'http://ea.hainan.gov.cn/' },
+  '河北': { name:'河北省教育考试院', url:'http://www.hebeea.edu.cn/' },
+  '河南': { name:'河南省教育考试院', url:'https://www.haeea.cn/' },
+  '黑龙江': { name:'黑龙江省招生考试院', url:'https://www.lzk.hl.cn/' },
+  '湖北': { name:'湖北省教育考试院', url:'http://www.hbea.edu.cn/' },
+  '湖南': { name:'湖南省教育考试院', url:'https://www.hneeb.cn/' },
+  '吉林': { name:'吉林省教育考试院', url:'http://www.jleea.edu.cn/' },
+  '江苏': { name:'江苏省教育考试院', url:'https://www.jseea.cn/' },
+  '江西': { name:'江西省教育考试院', url:'http://www.jxeea.cn/' },
+  '辽宁': { name:'辽宁省高中等教育招生考试委员会办公室', url:'https://www.lnzsks.com/' },
+  '内蒙古': { name:'内蒙古自治区教育招生考试中心', url:'https://www.nm.zsks.cn/' },
+  '宁夏': { name:'宁夏教育考试院', url:'https://www.nxjyks.cn/' },
+  '青海': { name:'青海省教育招生考试院', url:'http://www.qhjyks.com/' },
+  '山东': { name:'山东省教育招生考试院', url:'https://www.sdzk.cn/' },
+  '山西': { name:'山西省招生考试管理中心', url:'http://www.sxkszx.cn/' },
+  '陕西': { name:'陕西省教育考试院', url:'https://www.sneea.cn/' },
+  '上海': { name:'上海市教育考试院', url:'https://www.shmeea.edu.cn/' },
+  '四川': { name:'四川省教育考试院', url:'https://www.sceea.cn/' },
+  '天津': { name:'天津市教育招生考试院', url:'http://www.zhaokao.net/' },
+  '西藏': { name:'西藏自治区教育考试院', url:'http://zsks.edu.xizang.gov.cn/' },
+  '新疆': { name:'新疆教育考试院', url:'https://www.xjzk.gov.cn/' },
+  '云南': { name:'云南省招生考试院', url:'https://www.ynzs.cn/' },
+  '浙江': { name:'浙江省教育考试院', url:'https://www.zjzs.net/' }
+};
+
+// T1 专业初筛表：12门类 → 95专业类 (assets/T1_专业初筛表_模板.md + skill SKILL.md)
+const T1_MAJORS = [
+  // 01 哲学
+  { cat:'01 哲学', major:'0101 哲学类', intro:'研究世界本原、人生意义等根本问题，培养批判性思维', keywords:'' },
+  // 02 经济学
+  { cat:'02 经济学', major:'0201 经济学类', intro:'研究资源配置，偏理论和政策分析', keywords:'' },
+  { cat:'02 经济学', major:'0202 财政学类', intro:'研究政府收支、税收、预算等公共财政问题', keywords:'' },
+  { cat:'02 经济学', major:'0203 金融学类', intro:'研究货币、银行、证券、保险等金融市场运作', keywords:'竞争激烈' },
+  { cat:'02 经济学', major:'0204 经济与贸易类', intro:'研究国际贸易理论和实务，进出口操作', keywords:'' },
+  // 03 法学
+  { cat:'03 法学', major:'0301 法学类', intro:'研究法律理论和实务，培养律师/法官/检察官/法务', keywords:'需要背记量很大，法考通过率约15%' },
+  { cat:'03 法学', major:'0302 政治学类', intro:'研究政治制度和国际关系', keywords:'' },
+  { cat:'03 法学', major:'0303 社会学类', intro:'研究社会结构和社会问题', keywords:'' },
+  { cat:'03 法学', major:'0304 民族学类', intro:'研究民族文化和民族关系', keywords:'' },
+  { cat:'03 法学', major:'0305 马克思主义理论类', intro:'研究马克思主义理论和思政教育', keywords:'' },
+  { cat:'03 法学', major:'0306 公安学类', intro:'研究公安工作理论和实务，需通过体能测试', keywords:'有体能测试和政审要求' },
+  // 04 教育学
+  { cat:'04 教育学', major:'0401 教育学类', intro:'研究教育理论和教育管理', keywords:'' },
+  { cat:'04 教育学', major:'0402 体育学类', intro:'研究体育科学和运动训练', keywords:'有专项测试' },
+  // 05 文学
+  { cat:'05 文学', major:'0501 中国语言文学类', intro:'研究汉语和文学，培养语言文化素养', keywords:'' },
+  { cat:'05 文学', major:'0502 外国语言文学类', intro:'学习一门外语及相关文学文化', keywords:'英语最卷，小语种要关注目标国家局势' },
+  { cat:'05 文学', major:'0503 新闻传播学类', intro:'研究新闻采编和传播理论', keywords:'传统媒体遇冷，新媒体方向尚可' },
+  // 06 历史学
+  { cat:'06 历史学', major:'0601 历史学类', intro:'研究人类历史发展规律', keywords:'就业面较窄' },
+  // 07 理学
+  { cat:'07 理学', major:'0701 数学类', intro:'纯数学研究，可转向金融/IT/统计', keywords:'' },
+  { cat:'07 理学', major:'0702 物理学类', intro:'研究物质结构和运动规律', keywords:'' },
+  { cat:'07 理学', major:'0703 化学类', intro:'研究物质组成和变化规律', keywords:'' },
+  { cat:'07 理学', major:'0704 天文学类', intro:'研究天体运动和宇宙演化', keywords:'开设院校极少' },
+  { cat:'07 理学', major:'0705 地理科学类', intro:'研究自然地理和人文地理', keywords:'' },
+  { cat:'07 理学', major:'0706 大气科学类', intro:'研究大气运动和气象预报', keywords:'' },
+  { cat:'07 理学', major:'0707 海洋科学类', intro:'研究海洋物理化学和生物过程', keywords:'' },
+  { cat:'07 理学', major:'0708 地球物理学类', intro:'研究地球物理场和内部结构', keywords:'' },
+  { cat:'07 理学', major:'0709 地质学类', intro:'研究地球物质组成和演化历史', keywords:'' },
+  { cat:'07 理学', major:'0710 生物科学类', intro:'研究生命现象和生物活动规律', keywords:'本科就业窄，多数需读研' },
+  { cat:'07 理学', major:'0711 心理学类', intro:'研究人的心理和行为规律', keywords:'' },
+  { cat:'07 理学', major:'0712 统计学类', intro:'收集分析数据，应用广泛', keywords:'就业面广，大数据时代热门' },
+  // 08 工学
+  { cat:'08 工学', major:'0801 力学类', intro:'研究力与运动的基本规律', keywords:'' },
+  { cat:'08 工学', major:'0802 机械类', intro:'研究机械设计制造及自动化', keywords:'传统工科，就业稳定' },
+  { cat:'08 工学', major:'0803 仪器类', intro:'研究精密测量与控制仪器', keywords:'' },
+  { cat:'08 工学', major:'0804 材料类', intro:'研究材料的成分、结构、工艺和性能', keywords:'生化环材"四大天坑"之一，需慎重' },
+  { cat:'08 工学', major:'0805 能源动力类', intro:'研究能源转换与动力装置', keywords:'' },
+  { cat:'08 工学', major:'0806 电气类', intro:'研究电力系统与电气设备，电网就业好', keywords:'国家电网是主要雇主，福利好' },
+  { cat:'08 工学', major:'0807 电子信息类', intro:'研究电子、通信、信号处理等，IT硬件方向', keywords:'就业面广，薪资水平较高（8000-12000元起）' },
+  { cat:'08 工学', major:'0808 自动化类', intro:'用控制理论让机器自主运行', keywords:'' },
+  { cat:'08 工学', major:'0809 计算机类', intro:'研究计算机系统与软件，IT行业核心专业', keywords:'就业率近年下滑至68.65%，竞争激烈但天花板高' },
+  { cat:'08 工学', major:'0810 土木类', intro:'研究建筑结构设计施工', keywords:'行业下行，毕业生供过于求' },
+  { cat:'08 工学', major:'0811 水利类', intro:'研究水资源开发利用和水工建筑', keywords:'' },
+  { cat:'08 工学', major:'0812 测绘类', intro:'研究地理空间信息采集处理', keywords:'' },
+  { cat:'08 工学', major:'0813 化工与制药类', intro:'研究化学品和药品工业生产', keywords:'' },
+  { cat:'08 工学', major:'0814 地质类', intro:'研究地质资源勘查和工程地质', keywords:'' },
+  { cat:'08 工学', major:'0815 矿业类', intro:'研究矿产开采和矿物加工', keywords:'' },
+  { cat:'08 工学', major:'0816 纺织类', intro:'研究纺织材料与工艺', keywords:'' },
+  { cat:'08 工学', major:'0817 轻工类', intro:'研究轻工业产品设计和制造', keywords:'' },
+  { cat:'08 工学', major:'0818 交通运输类', intro:'研究交通规划设计与运营管理', keywords:'' },
+  { cat:'08 工学', major:'0819 海洋工程类', intro:'研究海洋开发和船舶工程', keywords:'' },
+  { cat:'08 工学', major:'0820 航空航天类', intro:'研究飞行器设计与航天技术', keywords:'要求物理/数学好，门槛高' },
+  { cat:'08 工学', major:'0821 兵器类', intro:'研究武器装备和弹药工程', keywords:'' },
+  { cat:'08 工学', major:'0822 核工程类', intro:'研究核能利用和辐射防护', keywords:'' },
+  { cat:'08 工学', major:'0823 农业工程类', intro:'研究农业机械化和设施农业', keywords:'' },
+  { cat:'08 工学', major:'0824 林业工程类', intro:'研究森林工程和木材加工', keywords:'' },
+  { cat:'08 工学', major:'0825 环境科学与工程类', intro:'研究环境保护和污染治理', keywords:'生化环材"四大天坑"之一' },
+  { cat:'08 工学', major:'0826 生物医学工程类', intro:'研究医疗器械和生物材料', keywords:'' },
+  { cat:'08 工学', major:'0827 食品科学与工程类', intro:'研究食品加工和安全检测', keywords:'' },
+  { cat:'08 工学', major:'0828 建筑类', intro:'研究建筑设计和城市规划', keywords:'行业下行，毕业生供过于求' },
+  { cat:'08 工学', major:'0829 安全科学与工程类', intro:'研究安全生产和事故预防', keywords:'' },
+  { cat:'08 工学', major:'0830 生物工程类', intro:'用生物技术进行工业生产', keywords:'生化环材"四大天坑"之一' },
+  { cat:'08 工学', major:'0831 公安技术类', intro:'研究公安工作中的技术手段', keywords:'有体能测试和政审要求' },
+  // 09 农学
+  { cat:'09 农学', major:'0901 植物生产类', intro:'研究农作物栽培与育种', keywords:'' },
+  { cat:'09 农学', major:'0902 自然保护与环境生态类', intro:'研究生态环境保护和修复', keywords:'' },
+  { cat:'09 农学', major:'0903 动物生产类', intro:'研究畜禽养殖和育种', keywords:'' },
+  { cat:'09 农学', major:'0904 动物医学类', intro:'研究动物疾病诊疗和防疫', keywords:'宠物医疗发展快' },
+  { cat:'09 农学', major:'0905 林学类', intro:'研究森林培育和管理', keywords:'' },
+  { cat:'09 农学', major:'0906 水产类', intro:'研究水产养殖和渔业资源', keywords:'' },
+  { cat:'09 农学', major:'0907 草学类', intro:'研究草坪和草地管理', keywords:'' },
+  // 10 医学
+  { cat:'10 医学', major:'1001 基础医学类', intro:'研究医学基础理论，不做临床', keywords:'不能考执业医师证' },
+  { cat:'10 医学', major:'1002 临床医学类', intro:'研究疾病诊断治疗，可做临床医生', keywords:'5+3年培养，周期最长，竞争激烈' },
+  { cat:'10 医学', major:'1003 口腔医学类', intro:'研究口腔疾病诊疗，独立执业机会多', keywords:'5年制+3年规培，生物化学是核心课' },
+  { cat:'10 医学', major:'1004 公共卫生与预防医学类', intro:'研究疾病预防和健康促进', keywords:'' },
+  { cat:'10 医学', major:'1005 中医学类', intro:'中医理论和临床实践', keywords:'' },
+  { cat:'10 医学', major:'1006 中西医结合类', intro:'中西医学理论和技能结合', keywords:'' },
+  { cat:'10 医学', major:'1007 药学类', intro:'研究药物研发和生产', keywords:'' },
+  { cat:'10 医学', major:'1008 中药学类', intro:'研究中药资源开发和应用', keywords:'' },
+  { cat:'10 医学', major:'1009 法医学类', intro:'用医学知识解决法律问题', keywords:'对心理素质要求高' },
+  { cat:'10 医学', major:'1010 医学技术类', intro:'医学检验/影像等辅助技术', keywords:'' },
+  { cat:'10 医学', major:'1011 护理学类', intro:'培养临床护理和护理管理人才', keywords:'就业需求大但工作强度高' },
+  // 12 管理学
+  { cat:'12 管理学', major:'1201 管理科学与工程类', intro:'用系统科学方法分析管理问题', keywords:'' },
+  { cat:'12 管理学', major:'1202 工商管理类', intro:'研究企业经营管理，含会计/市场营销等', keywords:'就业面广但起薪较低，非名校慎选' },
+  { cat:'12 管理学', major:'1203 农业经济管理类', intro:'研究农业产业和农村经济', keywords:'' },
+  { cat:'12 管理学', major:'1204 公共管理类', intro:'研究政府和非营利组织管理', keywords:'' },
+  { cat:'12 管理学', major:'1205 图书情报与档案管理类', intro:'研究信息资源组织管理', keywords:'' },
+  { cat:'12 管理学', major:'1206 物流管理与工程类', intro:'研究供应链和物流系统', keywords:'' },
+  { cat:'12 管理学', major:'1207 工业工程类', intro:'研究生产系统的优化设计', keywords:'' },
+  { cat:'12 管理学', major:'1208 电子商务类', intro:'研究互联网商业运营', keywords:'门槛低，竞争激烈' },
+  { cat:'12 管理学', major:'1209 旅游管理类', intro:'研究旅游产业运营管理', keywords:'受经济周期影响大' },
+  // 13 艺术学
+  { cat:'13 艺术学', major:'1301 艺术学理论类', intro:'研究艺术基本理论和批评', keywords:'' },
+  { cat:'13 艺术学', major:'1302 音乐与舞蹈学类', intro:'学习音乐或舞蹈表演', keywords:'有专业考试' },
+  { cat:'13 艺术学', major:'1303 戏剧与影视学类', intro:'研究戏剧影视创作和理论', keywords:'有专业考试' },
+  { cat:'13 艺术学', major:'1304 美术学类', intro:'研究美术创作和理论', keywords:'有专业考试' },
+  { cat:'13 艺术学', major:'1305 设计学类', intro:'研究视觉传达、环境、产品等设计', keywords:'有专业考试' }
+];
+
+// T2 个人情况分析表：25项5组 + 2项参考评测（严格对齐技能模板 SKILL.md）
+const T2_ITEMS = [
+  // 1. 分数情况（6行，AI 从 Stage 1 预填）
+  { group:'分数情况', item:'高考总分', desc:'基础数据', impact:'院校定位', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  { group:'分数情况', item:'省排名（位次）', desc:'基础数据', impact:'冲稳保判定', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  { group:'分数情况', item:'所在省份', desc:'基础数据', impact:'院校范围', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  { group:'分数情况', item:'选科组合', desc:'基础数据', impact:'专业过滤', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  { group:'分数情况', item:'各科成绩', desc:'基础数据', impact:'单科限制排查', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  { group:'分数情况', item:'亏分情况', desc:'基础数据', impact:'冲稳保策略', example:'（自动填充）', prefill:true, prefilledValue:'' },
+  // 2. 地域倾向（2行）
+  { group:'地域倾向', item:'留在本地 or 外地', desc:'城市选择', impact:'城市选择', example:'本地没资源，倾向去外地', prefill:false, prefilledValue:'' },
+  { group:'地域倾向', item:'发达城市机会多 or 小城市压力小', desc:'城市选择', impact:'城市选择', example:'大城市机会多', prefill:false, prefilledValue:'' },
+  // 3. 经济能力（3行）
+  { group:'经济能力', item:'家庭支持我出国吗', desc:'院校/专业选择', impact:'院校/专业选择', example:'不', prefill:false, prefilledValue:'' },
+  { group:'经济能力', item:'家庭支持我读研吗', desc:'院校/专业选择', impact:'院校/专业选择', example:'不', prefill:false, prefilledValue:'' },
+  { group:'经济能力', item:'家庭需要我尽快独立吗', desc:'院校/专业选择', impact:'院校/专业选择', example:'是，需尽快就业', prefill:false, prefilledValue:'' },
+  // 4. 个人偏好（8行）
+  { group:'个人偏好', item:'我喜欢的学科', desc:'专业选择', impact:'专业选择', example:'语文 数学 物理', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我不喜欢的学科', desc:'专业选择', impact:'专业选择', example:'英语 生物 化学', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我倾向的职业', desc:'专业选择', impact:'专业选择', example:'内容创作相关', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我拒绝的职业', desc:'专业选择', impact:'专业选择', example:'重复的操作型工作', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我的兴趣爱好', desc:'专业选择', impact:'专业选择', example:'游戏 写作 健身', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我不能忍受的环境/事物', desc:'专业/城市选择', impact:'专业/城市选择', example:'噪音 潮湿 炎热', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我擅长做的事', desc:'专业选择', impact:'专业选择', example:'写作', prefill:false, prefilledValue:'' },
+  { group:'个人偏好', item:'我不擅长做的事', desc:'专业选择', impact:'专业选择', example:'精细操作', prefill:false, prefilledValue:'' },
+  // 5. 未来规划（6行）
+  { group:'未来规划', item:'在意社会意义 or 不在意', desc:'专业选择', impact:'专业选择', example:'很在意', prefill:false, prefilledValue:'' },
+  { group:'未来规划', item:'希望快速赚钱 or 越老越吃香', desc:'专业选择', impact:'专业选择', example:'快速赚钱', prefill:false, prefilledValue:'' },
+  { group:'未来规划', item:'希望工作稳定 or 接受不稳定', desc:'专业选择', impact:'专业选择', example:'接受不稳定', prefill:false, prefilledValue:'' },
+  { group:'未来规划', item:'可以很努力 or 工作轻松', desc:'专业选择', impact:'专业选择', example:'最多朝九晚八，5天工作', prefill:false, prefilledValue:'' },
+  { group:'未来规划', item:'接受工作环境恶劣 or 要体面', desc:'专业选择', impact:'专业选择', example:'需要体面', prefill:false, prefilledValue:'' },
+  { group:'未来规划', item:'希望工作有壁垒 or 开放竞争', desc:'专业选择', impact:'专业选择', example:'开放竞争', prefill:false, prefilledValue:'' },
+  // 6. 参考评测（2行，技能标注"不主动问"，可不填）
+  { group:'参考评测', item:'MBTI', desc:'仅供参考', impact:'仅供参考', example:'INTP', prefill:false, prefilledValue:'' },
+  { group:'参考评测', item:'霍兰德职业测评', desc:'仅供参考', impact:'仅供参考', example:'/ 不清楚可不填', prefill:false, prefilledValue:'' }
+];
+
+// 动态年份计算（技能要求：按运行时反推近2-3届）
+function getDataYear() {
+  const now = new Date();
+  const y = now.getFullYear();
+  // 8月前当年录取尚未放榜，主参考上一年
+  return (now.getMonth() + 1) < 8 ? y - 1 : y;
+}
+function getDataYearShort() { return String(getDataYear()); }
+function getDataYearRange() {
+  const p = getDataYear();
+  return p + '/' + (p - 1) + '/' + (p - 2);
+}
+
+// k值区间定义 (params.md)
+const K_RANGES = {
+  taichong: { label:'太冲', max:0.80, include:false, color:'var(--danger)' },
+  chong:    { label:'冲',   min:0.80, max:0.95, include:true, color:'var(--warning)' },
+  wen:      { label:'稳',   min:0.95, max:1.08, include:true, color:'var(--accent)' },
+  bao:      { label:'保',   min:1.08, include:true, color:'var(--success)' }
+};
+
+// 亏分调整系数
+const DEFICIT_FACTORS = { '保守':0.85, '适中':0.80, '激进':0.72 };
+
+// ============================================================================
+// SECTION 2: DATA STORE — localStorage 持久化
+// ============================================================================
+const STORAGE_KEY = 'gaokao_data_v3';
+
+function getDefaultData() {
+  return {
+    stage: 0, stageStep: 0,
+    agreed: false, declared: false,
+    province: '', examType: '', subjects: '',
+    totalScore: '', rank: '', batchLine: '',
+    deficitTolerance: '适中(亏10%)',
+    restrictions: '',
+    t1Data: T1_MAJORS.map(m => ({...m, consider:'', reason:'', notes:''})),
+    t2Data: T2_ITEMS.map(item => ({...item})),
+    top3Majors: [],
+    cityPrefs: '', schoolPrefs: '', excludeSchools: '',
+    candidates: [], // {name,code,tag,k,dodging,rankYear,scoreYear,plan,city,remarks}
+    reportGenerated: false
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      const def = getDefaultData();
+      for (const k of Object.keys(def)) {
+        if (!(k in d)) d[k] = def[k];
+      }
+      // Schema migration: if t2Data uses old group names, reset to new structure
+      const oldT2Groups = ['家庭关系','经济关系','自我评估','金钱观念'];
+      const newT2Groups = ['分数情况','地域倾向','经济能力','个人偏好','未来规划'];
+      if (d.t2Data && d.t2Data.length > 0) {
+        const firstGroup = d.t2Data[0].group;
+        if (oldT2Groups.includes(firstGroup) && !newT2Groups.includes(firstGroup)) {
+          d.t2Data = def.t2Data;
+        }
+      }
+      return d;
+    }
+  } catch(e) {}
+  return getDefaultData();
+}
+
+function saveData(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+let appData = loadData();
+
+// ============================================================================
+// SECTION 3: CHAT ENGINE — 对话引擎
+// ============================================================================
+const chatContainer = document.getElementById('chatContainer');
+const quickRepliesContainer = document.getElementById('quickRepliesContainer');
+const chatInput = document.getElementById('chatInput');
+const btnSend = document.getElementById('btnSend');
+
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addAIMessage(html, quickReplies) {
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `<div class="msg-bubble">${html}</div><div class="msg-time">${formatTime()}</div>`;
+  chatContainer.appendChild(div);
+  scrollToBottom();
+  if (quickReplies && quickReplies.length > 0) {
+    // Always append "随便问问" as the last button for free-form Q&A
+    const allReplies = [...quickReplies, {text:'💬 随便问问', freechat:true}];
+    renderQuickReplies(allReplies);
+  }
+  return div;
+}
+
+function addUserMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div><div class="msg-time">${formatTime()}</div>`;
+  chatContainer.appendChild(div);
+  scrollToBottom();
+}
+
+function addTypingIndicator() {
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  chatContainer.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function renderQuickReplies(replies) {
+  quickRepliesContainer.innerHTML = replies.map((r, i) => {
+    let cls = 'quick-reply';
+    if (r.primary) cls += ' primary';
+    if (r.freechat) cls += ' freechat';
+    return `<button class="${cls}" onclick="handleQuickReply(${i})">${escapeHtml(r.text)}</button>`;
+  }).join('');
+}
+
+function clearQuickReplies() {
+  quickRepliesContainer.innerHTML = '';
+}
+
+function handleQuickReply(idx) {
+  // Get the last button element to check if it's the freechat button
+  const buttons = quickRepliesContainer.querySelectorAll('.quick-reply');
+  const clickedBtn = buttons[idx];
+  const isFreeChat = clickedBtn && clickedBtn.classList.contains('freechat');
+
+  if (isFreeChat) {
+    enterFreeChat('好的，你可以随便问我高考志愿相关的问题！<br>比如专业解读、院校对比、录取规则、就业前景等等。<br><br>想回到填报流程时，点<strong>"开始填报"</strong>就行。');
+    return;
+  }
+
+  // Normal stage handler
+  if (window._quickReplyHandler) {
+    window._quickReplyHandler(idx);
+  }
+}
+
+function formatTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// ============================================================================
+// SECTION 4: INPUT HANDLING
+// ============================================================================
+function handleInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+  // Auto-resize
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  clearQuickReplies();
+
+  // 1) If no handler set → always fallback to AI
+  if (!window._messageHandler) {
+    askAI(text);
+    return;
+  }
+
+  // 2) Detect if this is a general question (not a stage input)
+  //    Stage inputs: numbers, province names, confirmations, short answers
+  //    Questions: has 吗/？/怎么样/是什么/为什么/怎么/多少/哪/能不能/什么意思
+  const isQuestion = /[吗？?]|怎么样|是什么|为什么|怎么|如何|哪[所些个]|能不能|可不可以|什么意思|含义|区别|对比|前景|就业|薪资|学费|学制|培养|课程/.test(text);
+  const isStageInput = /^\d{2,6}$|^\d{2,6}\s*(分|位次|名|排名)?$|知道了|继续|同意|好的|可以|是的|对|没错|行|嗯|不|安徽|广东|江苏|山东|河南|四川|浙江|湖南|湖北|河北|福建|江西|广西|云南|贵州|重庆|北京|上海|天津|陕西|山西|甘肃|宁夏|新疆|青海|西藏|内蒙古|黑龙江|吉林|辽宁|海南|物理|历史|物化生|物化地|物生地|史地政|历政地/.test(text);
+
+  if (isQuestion && !isStageInput) {
+    // Looks like a general question → route to AI
+    askAI(text);
+    return;
+  }
+
+  // 3) Normal stage flow
+  window._messageHandler(text);
+}
+
+// ========== Free Chat / General AI Q&A ==========
+
+function enterFreeChat(welcomeMsg) {
+  clearQuickReplies();
+  window._messageHandler = null;
+  window._quickReplyHandler = null;
+  addAIMessage(welcomeMsg || '你可以随便问我高考志愿相关的问题！', [
+    {text:'开始填报', primary:true},
+    {text:'继续随便问'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) {
+      if (!appData.agreed) { stage0_showMergedDeclaration(); }
+      else { clearQuickReplies(); stage0_done(); }
+    }
+  };
+  window._messageHandler = (text) => {
+    if (/开始|填报|报志愿|帮我/.test(text)) {
+      if (!appData.agreed) { stage0_showMergedDeclaration(); }
+      else { clearQuickReplies(); stage0_done(); }
+    } else {
+      askAI(text);
+    }
+  };
+}
+
+let _askAiBusy = false;
+
+async function askAI(question) {
+  if (_askAiBusy) return;
+
+  const cfg = window.APP_CONFIG || {};
+  const botId = cfg.botId || '';
+  const apiKey = cfg.apiKey || '';
+
+  // Check if API is configured (not placeholder)
+  if (!botId || botId.includes('bot-20')) {
+    // botId is configured (bot-2026...) — but check apiKey too
+    if (!apiKey || apiKey.length < 10) {
+      addAIMessage('💡 <em>AI问答功能需要配置API Key，请将火山引擎的API Key填入config.js。</em>');
+    } else {
+      // Try API call
+    }
+  }
+
+  if (!botId || !apiKey || apiKey.length < 10) {
+    // No API configured → use a simple canned response for common questions
+    addAIMessage(cannedResponse(question));
+    return;
+  }
+
+  _askAiBusy = true;
+  addTypingIndicator();
+
+  try {
+    const resp = await fetch(cfg.arkEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: botId,
+        messages: [
+          { role: 'system', content: '你是高考志愿填报助手。回答要简洁、专业、具体。用中文回答。如果用户问的是具体院校/专业，尽量给出录取分数、位次、就业前景等实用信息。如果数据不确定，请注明需要去官方渠道核实。' },
+          { role: 'user', content: question }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        stream: false
+      })
+    });
+
+    const data = await resp.json();
+    const reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法回答这个问题。';
+
+    removeTypingIndicator();
+    addAIMessage(reply, [
+      {text:'开始填报', primary:true},
+      {text:'继续问'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      if (idx === 0) {
+        if (!appData.agreed) { stage0_showMergedDeclaration(); }
+        else { clearQuickReplies(); stage0_done(); }
+      }
+    };
+    window._messageHandler = (text) => {
+      if (/开始|填报|报志愿|帮我/.test(text)) {
+        if (!appData.agreed) { stage0_showMergedDeclaration(); }
+        else { clearQuickReplies(); stage0_done(); }
+      } else {
+        askAI(text);
+      }
+    };
+  } catch (err) {
+    removeTypingIndicator();
+    addAIMessage('⚠️ 网络出错，AI问答暂时不可用。<br>' + cannedResponse(question));
+  } finally {
+    _askAiBusy = false;
+  }
+}
+
+function cannedResponse(question) {
+  const q = question.toLowerCase();
+  if (/口腔|牙/.test(q)) return '口腔医学是5年制本科，核心课程包括口腔解剖生理学、口腔组织病理学、口腔内科学、口腔颌面外科学、口腔修复学等。就业方向：综合医院口腔科、口腔专科医院、口腔诊所。近年录取位次因省份和院校差异很大，建议你说出具体省份和目标分数，我帮你分析。';
+  if (/临床医学/.test(q)) return '临床医学是5年制本科+3年规培，核心课程包括人体解剖学、生理学、病理学、药理学、内科学、外科学等。就业：各级医院、社区卫生服务中心。分数要求普遍较高，985/211医学院线通常在全省前3%-5%。';
+  if (/计算机|软件/.test(q)) return '计算机科学与技术是4年制，核心课程包括数据结构、操作系统、计算机网络、数据库、算法设计等。就业面广：互联网公司、金融科技、国企信息化部门。近年竞争激烈，好学校的位次要求逐年上涨。';
+  if (/平行志愿/.test(q)) return '平行志愿指同一批次可填报多所院校，按"分数优先、遵循志愿"原则投档。你的档案会按你填报的志愿顺序依次检索，一旦投档到某校，后续志愿不再检索。关键策略：冲(前20%位次的学校)、稳(匹配位次)、保(后20%位次)。';
+  if (/冲稳保/.test(q)) return '冲稳保是用你的全省位次和学校往年录取位次做对比：<br>• <strong>冲</strong>：学校位次略高于你（k<0.95），有希望但没把握<br>• <strong>稳</strong>：学校位次和你接近（0.95≤k≤1.08）<br>• <strong>保</strong>：学校位次明显低于你（k>1.08），比较安全<br>其中 k = 学校位次 / 你的位次。<br><br>告诉我你的位次和志愿专业，我可以帮你算。';
+  if (/就业|前景|薪资/.test(q)) return '不同专业的就业前景差异很大。<br>医学类：稳定但培养周期长（5年本科+3年规培）<br>计算机类：薪资高但竞争激烈、更新快<br>师范类：稳定、有寒暑假、编制竞争大<br>金融类：薪资两极化，头部机构门槛高<br>工科类：就业面广，制造业和基建需求稳定<br><br>你对哪个方向感兴趣？说出具体专业我帮你详细分析。';
+  if (/录取|分数线|多少分/.test(q)) return '录取分数每年都在变，取决于当年考生整体分数和报考热度。有参考价值的是<strong>位次（全省排名）</strong>——学校录取位次比分数稳定得多。<br><br>告诉我你的省份、位次（或分数）、想报的专业方向，我帮你分析。你也可以点击"开始填报"进入正式填报流程。';
+  if (/学校|大学|院校/.test(q)) return '选学校可以从这几个维度考虑：<br>• <strong>层次</strong>：985/211/双一流/普本/民办<br>• <strong>地域</strong>：一线城市 vs 省内 vs 偏远<br>• <strong>专业实力</strong>：该校目标专业是否有博士点/国家重点学科<br>• <strong>就业</strong>：该校毕业生的主要去向和薪资<br><br>告诉我你考虑的学校和专业，我帮你分析对比。';
+  return '这个问题我暂时没有预设答案。不过你可以：<br>• 点击<strong>"开始填报"</strong>进入正式填报流程<br>• 继续问我其他高考志愿相关问题<br>• 告诉我你更具体想问什么';
+}
+
+// ============================================================================
+// SECTION 5: STAGE FLOW — 阶段流程控制
+// ============================================================================
+function updateStageIndicator(stage) {
+  updateProgressBar();
+  updateInputPlaceholder();
+  document.querySelectorAll('.stage-dot').forEach(dot => {
+    const s = parseInt(dot.dataset.stage);
+    dot.classList.remove('active','done');
+    if (s === stage) dot.classList.add('active');
+    else if (s < stage) dot.classList.add('done');
+  });
+  document.querySelectorAll('.stage-connector').forEach((conn, i) => {
+    if (i < stage) conn.classList.add('done');
+    else conn.classList.remove('done');
+  });
+}
+
+function setStage(stage, step) {
+  appData.stage = stage;
+  appData.stageStep = step || 0;
+  saveData(appData);
+  updateStageIndicator(stage);
+  updateProgressBar();
+}
+
+// ============================================================================
+// SECTION 6: STAGE HANDLERS — 每个阶段的对话逻辑
+// ============================================================================
+
+function startConversation() {
+  chatContainer.innerHTML = '';
+  clearQuickReplies();
+
+  const stage = appData.stage;
+  const step = appData.stageStep;
+  updateStageIndicator(stage);
+
+  switch (stage) {
+    case 0: runStage0(step); break;
+    case 1: runStage1(step); break;
+    case 2: runStage2(step); break;
+    case 3: runStage3(step); break;
+    case 4: runStage4(step); break;
+    case 5: runStage5(step); break;
+  }
+}
+
+// ---- Stage 0: 欢迎 + 一条合并声明 ----
+function runStage0(step) {
+  if (step === 0) {
+    addAIMessage('👋 你好！我是高考志愿填报助手。<br><br>不管你是刚出分、还在纠结专业，还是已经开始圈学校，我都可以陪你一步一步把这件事理清楚。<br><br>你也可以<strong>随时问我任何高考志愿相关的问题</strong>——专业解读、院校对比、政策规则、就业前景等等。', [
+      {text:'开始填报志愿', primary:true},
+      {text:'先随便问问'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      if (idx === 0) { stage0_showMergedDeclaration(); }
+      else { enterFreeChat('好的，你可以随便问我高考志愿相关的问题！比如：<br>• 某个专业学什么、就业怎么样<br>• 某个学校好不好<br>• 平行志愿怎么填<br>• 什么位次能报什么学校'); }
+    };
+    window._messageHandler = (text) => {
+      // If user types free-form question, route to AI
+      if (text.includes('填报') || text.includes('开始') || text.includes('志愿') && text.includes('报')) {
+        stage0_showMergedDeclaration();
+      } else {
+        askAI(text);
+      }
+    };
+  } else if (step === 1) {
+    stage0_showMergedDeclaration();
+  }
+}
+
+function stage0_showMergedDeclaration() {
+  clearQuickReplies();
+  setStage(0, 1);
+
+  const mergedDecl = `<div class="declaration-block" style="font-size:13px;line-height:1.8;">
+<strong>📌 使用须知</strong><br><br>
+本工具是<strong>AI辅助高考志愿填报系统</strong>，请阅读并确认以下内容：<br><br>
+<span style="color:var(--text-secondary);">①</span> 分析基于AI，数据有时效性，<strong>最终以各省教育考试院官方公布为准</strong><br>
+<span style="color:var(--text-secondary);">②</span> 你的所有信息（分数、位次、选科、偏好等）<strong>仅保存在浏览器本地</strong>，不上传任何服务器<br>
+<span style="color:var(--text-secondary);">③</span> 本工具不是志愿填报机构，<strong>不收费、不承诺录取结果</strong><br>
+<span style="color:var(--text-secondary);">④</span> 建议结合家人意见、学校老师和官方渠道做最终决定
+</div>`;
+
+  addAIMessage(mergedDecl + '<br>点击下方按钮确认，然后我们开始。', [
+    {text:'同意，开始', primary:true},
+    {text:'不同意，我想先随便问问'},
+    {text:'我还没出分，先了解流程'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) {
+      appData.agreed = true;
+      saveData(appData);
+      stage0_done();
+    } else if (idx === 1) {
+      // Disagree → enter free chat mode
+      addAIMessage('没问题！你可以随便问高考志愿相关的问题。<br><br>等你想正式填报的时候，说<strong>"开始填报"</strong>或<strong>"帮我报志愿"</strong>就好。', [
+        {text:'开始填报', primary:true},
+        {text:'继续随便问'}
+      ]);
+      window._quickReplyHandler = (i) => {
+        if (i === 0) { stage0_showMergedDeclaration(); }
+        else { addAIMessage('好的，继续问吧～'); enterFreeChat('还有什么想了解的？'); }
+      };
+      window._messageHandler = (text) => {
+        if (/开始|填报|报志愿|帮我/.test(text)) { stage0_showMergedDeclaration(); }
+        else { askAI(text); }
+      };
+    } else {
+      // "还没出分" → free chat
+      enterFreeChat('没问题！你可以先了解一下：<br>• 你感兴趣的大学专业学什么<br>• 什么是平行志愿、冲稳保<br>• 不同省份的录取规则差异<br>• 某专业的就业前景和薪资<br><br>想了解哪些？或者直接问我具体问题。');
+    }
+  };
+  window._messageHandler = (text) => {
+    if (/同意|开始|好的|可以|没问题|继续/.test(text) && !/不同|不想|不要|不/.test(text)) {
+      appData.agreed = true;
+      saveData(appData);
+      stage0_done();
+    } else if (/开始|填报|报志愿|帮我/.test(text)) {
+      stage0_showMergedDeclaration();
+    } else {
+      askAI(text);
+    }
+  };
+}
+
+function stage0_done() {
+  clearQuickReplies();
+  setStage(1, 0);
+  setTimeout(() => runStage1(0), 500);
+}
+
+// ---- Stage 1: 信息收集（A卡 + B卡） ----
+function runStage1(step) {
+  if (!appData.agreed) { setStage(0, 1); runStage0(1); return; }
+
+  if (step === 0) {
+    addAIMessage('好，现在我需要了解一些基本信息。<br><br>首先是A卡——<strong>你是哪个省份的考生？</strong>', [
+      {text:'安徽'},{text:'广东'},{text:'江苏'},{text:'山东'},{text:'河南'},{text:'四川'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      const provinces = ['安徽','广东','江苏','山东','河南','四川'];
+      appData.province = provinces[idx];
+      saveData(appData);
+      stage1_confirmProvince();
+    };
+    window._messageHandler = (text) => {
+      // Check if text matches a province
+      const matched = Object.keys(PROVINCE_AUTHORITY).find(p => text.includes(p));
+      if (matched) { appData.province = matched; saveData(appData); stage1_confirmProvince(); }
+      else { appData.province = text; saveData(appData); stage1_confirmProvince(); }
+    };
+  } else if (step === 1) {
+    stage1_confirmProvince();
+  } else if (step === 2) {
+    stage1_askExamType();
+  } else if (step === 3) {
+    stage1_askScore();
+  }
+}
+
+function stage1_confirmProvince() {
+  clearQuickReplies();
+  setStage(1, 1);
+
+  const authority = PROVINCE_AUTHORITY[appData.province];
+  const authInfo = authority
+    ? `<br><br>📎 ${appData.province}省教育考试院：<a class="msg-link" href="${authority.url}" target="_blank">${authority.name}</a>（建议收藏，后面会用到）`
+    : '';
+
+  addAIMessage(`好的，${appData.province}。${authInfo}<br><br>接下来——<strong>你的选科模式是什么？</strong>`, [
+    {text:'老高考·理科'},{text:'老高考·文科'},{text:'3+1+2·物理类'},{text:'3+1+2·历史类'},{text:'3+3'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    const types = ['老高考·理科','老高考·文科','3+1+2·物理类','3+1+2·历史类','3+3'];
+    appData.examType = types[idx];
+    saveData(appData);
+    stage1_askExamType();
+  };
+  window._messageHandler = (text) => {
+    appData.examType = text;
+    saveData(appData);
+    stage1_askExamType();
+  };
+}
+
+function stage1_askExamType() {
+  clearQuickReplies();
+  setStage(1, 2);
+
+  addAIMessage(`好，${appData.examType}。<br><br>现在进入B卡——<strong>你的高考成绩是多少？</strong><br>（也可以先跳过，后面再补）`, [
+    {text:'我填成绩', primary:true},
+    {text:'先跳过，继续往下'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) {
+      addAIMessage('请依次输入：<br>1️⃣ 总分（如560）<br>2️⃣ 全省位次（如52000）<br>3️⃣ 批次线（如一本线515）<br>4️⃣ 各科分数（如语文110/数学120/英语115/物理75/化学70/生物70）<br><br>也可以分开发，一条一条告诉我。');
+      window._messageHandler = (text) => { stage1_handleScore(text); };
+    } else {
+      addAIMessage('没问题，先继续。后面想补成绩随时可以告诉我。<br><br>那你有<strong>身体条件或政策限制</strong>吗？（比如色盲/色弱、不能报某些专业等）');
+      setStage(1, 4);
+      window._messageHandler = (text) => { stage1_handleRestriction(text); };
+    }
+  };
+  window._messageHandler = (text) => { stage1_handleScore(text); };
+}
+
+function stage1_handleScore(text) {
+  clearQuickReplies();
+
+  // Parse score info
+  if (text.match(/\d{3}/)) {
+    const scoreMatch = text.match(/(\d{3})/);
+    if (scoreMatch) appData.totalScore = scoreMatch[1];
+
+    const rankMatch = text.match(/位次[：:\s]*(\d[\d,]*)/) || text.match(/(\d[\d,]*)\s*[名位]/);
+    if (rankMatch) appData.rank = rankMatch[1].replace(/,/g,'');
+
+    const lineMatch = text.match(/线[：:\s]*(\d{3})/);
+    if (lineMatch) appData.batchLine = lineMatch[1];
+  }
+
+  saveData(appData);
+  setStage(1, 3);
+
+  // Prefill T2 score items
+  appData.t2Data.forEach(item => {
+    if (item.prefill) {
+      if (item.item === '高考总分') item.prefilledValue = appData.totalScore || '';
+      if (item.item === '全省位次') item.prefilledValue = appData.rank || '';
+      if (item.item === '选科模式') item.prefilledValue = appData.examType || '';
+      if (item.item === '各科分数' && text.includes('/')) item.prefilledValue = text;
+      if (item.item === '全省批次线') item.prefilledValue = appData.batchLine || '';
+    }
+  });
+  saveData(appData);
+
+  let confirmText = '我记录下来了：';
+  if (appData.totalScore) confirmText += `<br>✅ 总分：${appData.totalScore}分`;
+  if (appData.rank) confirmText += `<br>✅ 位次：${appData.rank}名`;
+  if (appData.batchLine) confirmText += `<br>✅ 批次线：${appData.batchLine}分`;
+  confirmText += '<br><br>最后——<strong>你能接受的亏分程度是？</strong>（即能接受报比自己位次高多少的学校）';
+
+  addAIMessage(confirmText, [
+    {text:'保守（亏5%以内）'},{text:'适中（亏10%左右）', primary:true},{text:'激进（亏20%，冲就完了）'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    const levels = ['保守（亏5%以内）','适中（亏10%左右）','激进（亏20%，冲就完了）'];
+    appData.deficitTolerance = levels[idx];
+    saveData(appData);
+    stage1_askRestriction();
+  };
+}
+
+function stage1_askRestriction() {
+  clearQuickReplies();
+  setStage(1, 4);
+
+  addAIMessage('有<strong>身体条件或政策限制</strong>吗？<br>比如：色盲/色弱、乙肝携带、身高要求、体能测试不过等。<br>（没有就回"没有"）', [
+    {text:'没有特殊限制'},{text:'有，我详细说'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) { appData.restrictions = '无'; stage1_done(); }
+    else {
+      addAIMessage('请说，我帮你分析哪些专业可能受影响。');
+      window._messageHandler = (text) => { stage1_handleRestriction(text); };
+    }
+  };
+  window._messageHandler = (text) => { stage1_handleRestriction(text); };
+}
+
+function stage1_handleRestriction(text) {
+  clearQuickReplies();
+  if (text !== '无' && text !== '没有') appData.restrictions = text;
+  else appData.restrictions = '无';
+  saveData(appData);
+  stage1_done();
+}
+
+function stage1_done() {
+  clearQuickReplies();
+  setStage(2, 0);
+  setTimeout(() => runStage2(0), 600);
+}
+
+// ---- Stage 2: T1/T2 专业表 ----
+function runStage2(step) {
+  if (step === 0) {
+    // Present T1 download link and T2
+    let msg = '信息收集好了。现在进入最关键的环节——<strong>专业初筛</strong>。<br><br>';
+    msg += '📋 <strong>T1 专业初筛表</strong>：12大学科门类，95个专业类。点击<strong>「是」</strong>标记你感兴趣的专业类就行。<br>';
+    msg += '支持按门类批量选择，原因可选填。<br><br>';
+    msg += '📋 <strong>T2 个人情况分析表</strong>：25项、5组（分数情况/地域倾向/经济能力/个人偏好/未来规划）。<br>';
+    msg += '分数情况已从基础信息自动填充，其余4组每组至少填1行即可。参考评测（MBTI/霍兰德）可不填。';
+
+    addAIMessage(msg, [
+      {text:'打开T1表', primary:true},
+      {text:'先打开T2表'},
+      {text:'两张表都打开'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      if (idx === 0) openT1Modal();
+      else if (idx === 1) openT2Modal();
+      else { openT1Modal(); setTimeout(() => openT2Modal(), 300); }
+    };
+    window._messageHandler = (text) => {
+      // Detect completion phrases
+      const done = /填完|好了|完成|可以了|没问题|继续|下一步|ok|done|next/i;
+      if (done.test(text)) {
+        addAIMessage('好的，我来检查一下你的填写情况。');
+        setStage(2, 1);
+        setTimeout(() => runStage2_validation(), 600);
+        return;
+      }
+      if (text.includes('T1') || text.includes('专业')) openT1Modal();
+      else if (text.includes('T2') || text.includes('个人')) openT2Modal();
+      else { openT1Modal(); }
+    };
+  } else if (step === 1) {
+    // After user says "填完了"
+    runStage2_validation();
+  }
+}
+
+function runStage2_validation() {
+  clearQuickReplies();
+
+  // Check T1: at least 1 row with consider=是
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  const t1HasReasons = t1Considered.filter(r => r.reason && r.reason.trim() !== '');
+
+  // Check T2: count filled groups (informational only, not blocking)
+  const T2_MAIN_GROUPS = ['地域倾向','经济能力','个人偏好','未来规划'];
+  const groups = {};
+  appData.t2Data.forEach(item => {
+    if (!groups[item.group]) groups[item.group] = { total:0, filled:0, items:[] };
+    groups[item.group].total++;
+    if (item.prefilledValue && item.prefilledValue.trim()) groups[item.group].filled++;
+    else { groups[item.group].items.push(item); }
+  });
+  const t2FilledGroups = T2_MAIN_GROUPS.filter(g => groups[g] && groups[g].filled > 0).length;
+  const t2MissingGroups = T2_MAIN_GROUPS.filter(g => !groups[g] || groups[g].filled === 0);
+
+  // CASE 1: T1 has zero "是" — MUST fix
+  if (t1Considered.length === 0) {
+    addAIMessage(
+      '我看了一下——<strong>T1表还没标记任何「是」。</strong><br><br>'
+      + '至少需要选<strong>1个</strong>感兴趣的专业类，我才能帮你做分析。<br><br>'
+      + '打开T1表，浏览12个门类，看到喜欢的点一下变成「是」就行。',
+      [{text:'打开T1表', primary:true}]
+    );
+    window._quickReplyHandler = (idx) => { if (idx === 0) openT1Modal(); };
+    window._messageHandler = (text) => { openT1Modal(); };
+    setStage(2, 1);
+    return;
+  }
+
+  // CASE 2: T1 has selections — that's enough to proceed!
+  // Build message about current state
+  let msg = '我看了一下你的填写情况：<br><br>';
+  msg += '✅ <strong>T1专业初筛</strong>：标记了 <strong>' + t1Considered.length + '</strong> 个「是」的专业类';
+
+  if (t1HasReasons.length === 0) {
+    msg += '（原因空着也没关系，我结合其他信息分析）';
+  } else {
+    msg += '，' + t1HasReasons.length + '个写了原因';
+  }
+  msg += '<br><br>';
+
+  // T2 status
+  if (t2FilledGroups === 0) {
+    msg += '📋 <strong>T2个人情况表</strong>：还没填。<br>';
+    msg += '填了T2我能做更精准的匹配分析，但不填也能继续——';
+    msg += '我会基于你已有的信息（分数/位次/选科/省份）来解读你选的专业。';
+  } else if (t2FilledGroups < 4) {
+    msg += '📋 <strong>T2个人情况表</strong>：' + t2FilledGroups + '/4组有内容。<br>';
+    msg += '我可以结合这些信息做分析。';
+  } else {
+    msg += '📋 <strong>T2个人情况表</strong>：4组全部有内容 ✅';
+  }
+  msg += '<br><br>要继续吗？';
+
+  if (t2FilledGroups === 0) {
+    // T2 empty: offer both paths
+    addAIMessage(msg, [
+      {text:'解读这些专业', primary:true},
+      {text:'先填T2表'},
+      {text:'先补T1原因'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      if (idx === 0) stage2_generateInterpretation();
+      else if (idx === 1) openT2Modal();
+      else {
+        addAIMessage('请说原因，我帮你记在T1表里。比如："法学类：想考公 电子信息类：喜欢物理"');
+        window._messageHandler = (text) => { stage2_handleReasonInput(text); };
+      }
+    };
+    window._messageHandler = (text) => {
+      // Text input routing: 继续/解读 → interpretation, T2 → modal, 原因 → reason input
+      if (/继续|解读|可以|好的|ok|yes|没问题|go/i.test(text)) {
+        stage2_generateInterpretation();
+      } else if (/T2|个人|情况/i.test(text)) {
+        openT2Modal();
+      } else if (/原因|补/.test(text)) {
+        addAIMessage('请说原因，我帮你记在T1表里。比如："法学类：想考公 电子信息类：喜欢物理"');
+        window._messageHandler = (t) => { stage2_handleReasonInput(t); };
+      } else {
+        // Default: any text → interpretation
+        stage2_generateInterpretation();
+      }
+    };
+  } else {
+    // T2 has content: default to interpretation
+    addAIMessage(msg, [
+      {text:'解读这些专业', primary:true},
+      {text:'先补T1原因'},
+      {text:'补充T2信息'}
+    ]);
+    window._quickReplyHandler = (idx) => {
+      if (idx === 0) stage2_generateInterpretation();
+      else if (idx === 1) {
+        addAIMessage('请说原因，我帮你记在T1表里。');
+        window._messageHandler = (text) => { stage2_handleReasonInput(text); };
+      } else { openT2Modal(); }
+    };
+    window._messageHandler = (text) => {
+      if (/继续|解读|可以|好的|ok|yes|没问题|go/i.test(text)) {
+        stage2_generateInterpretation();
+      } else if (/T2|补充|个人|情况/i.test(text)) {
+        openT2Modal();
+      } else if (/原因|补/.test(text)) {
+        addAIMessage('请说原因，我帮你记在T1表里。');
+        window._messageHandler = (t) => { stage2_handleReasonInput(t); };
+      } else {
+        stage2_generateInterpretation();
+      }
+    };
+  }
+  setStage(2, 1);
+}
+
+function reportT2Missing(missingGroups, groups) {
+  let guidance = '<br>';
+  missingGroups.forEach(g => {
+    const data = groups[g];
+    guidance += `📌 <strong>${g}</strong>（${data.total}项）：<br>`;
+    data.items.forEach(item => {
+      guidance += `&nbsp;&nbsp;· ${item.item} — ${item.example ? '如：' + item.example : item.desc}<br>`;
+    });
+    guidance += '<br>';
+  });
+  addAIMessage(guidance, [
+    {text:'打开T2表填写', primary:true},
+    {text:'我在这里说吧'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) openT2Modal();
+    else {
+      addAIMessage('请说，我帮你记在T2表里。');
+      window._messageHandler = (text) => { stage2_handleT2Input(text); };
+    }
+  };
+  window._messageHandler = (text) => { stage2_handleT2Input(text); };
+}
+
+function stage2_handleReasonInput(text) {
+  clearQuickReplies();
+  // Try to parse "major: reason" format
+  appData.t1Data.forEach(r => {
+    if (r.consider === '是' && !r.reason) {
+      // Check if text mentions this major
+      const keywords = [r.major.split(' ')[0], r.major];
+      for (const kw of keywords) {
+        if (text.includes(kw.replace(/0\d+\s*/, ''))) {
+          const idx = text.indexOf(kw.replace(/0\d+\s*/, ''));
+          const after = text.substring(idx + kw.length).replace(/[：:]\s*/, '').trim();
+          const reason = after.split(/[，,。.；;]/)[0].trim();
+          if (reason && reason.length > 1) r.reason = reason;
+        }
+      }
+    }
+  });
+  saveData(appData);
+  setTimeout(() => runStage2_validation(), 800);
+}
+
+function stage2_handleT2Input(text) {
+  clearQuickReplies();
+  // Simple: store as additional notes
+  saveData(appData);
+  setTimeout(() => runStage2_validation(), 800);
+}
+
+function stage2_generateInterpretation() {
+  clearQuickReplies();
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  setStage(2, 2);
+
+  // Build T2 profile dict
+  const t2 = {};
+  appData.t2Data.forEach(item => {
+    if (item.prefilledValue) t2[item.item] = item.prefilledValue;
+  });
+
+  // Extract T2 dimensions
+  const likeSubjects = (t2['我喜欢的学科'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const hateSubjects = (t2['我不喜欢的学科'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const goodAt = (t2['我擅长做的事'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const badAt = (t2['我不擅长做的事'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const preferJob = t2['我倾向的职业'] || '';
+  const avoidJob = t2['我拒绝的职业'] || '';
+  const hobbies = t2['我的兴趣爱好'] || '';
+  const hateEnv = t2['我不能忍受的环境/事物'] || '';
+
+  const quickMoney = (t2['希望快速赚钱 or 越老越吃香'] || '').includes('快速');
+  const slowGrowth = (t2['希望快速赚钱 or 越老越吃香'] || '').includes('越老越吃香');
+  const wantStable = (t2['希望工作稳定 or 接受不稳定'] || '').includes('稳定');
+  const acceptRisk = (t2['希望工作稳定 or 接受不稳定'] || '').includes('不稳定');
+  const canWorkHard = (t2['可以很努力 or 工作轻松'] || '').includes('努力');
+  const wantEasy = (t2['可以很努力 or 工作轻松'] || '').includes('轻松');
+  const wantDignity = (t2['接受工作环境恶劣 or 要体面'] || '').includes('体面');
+  const wantBarrier = (t2['希望工作有壁垒 or 开放竞争'] || '').includes('壁垒');
+  const acceptOpen = (t2['希望工作有壁垒 or 开放竞争'] || '').includes('开放');
+  const careSocial = (t2['在意社会意义 or 不在意'] || '').includes('在意');
+
+  const needIndependence = (t2['家庭需要我尽快独立吗'] || '').includes('是') || (t2['家庭需要我尽快独立吗'] || '').includes('尽快');
+
+  // Generate overview
+  let msg = '好的，读完了你的T1和T2。<br><br>';
+  msg += '<strong>你在T1选了' + t1Considered.length + '个专业类：</strong><br>';
+
+  // T2 summary badge
+  const t2Filled = Object.keys(t2).length;
+  if (t2Filled >= 10) {
+    msg += '<br>你的T2画像比较完整（' + t2Filled + '项），我可以做较深入的分析。<br><br>';
+  } else if (t2Filled >= 4) {
+    msg += '<br>你的T2画像有' + t2Filled + '项，分析有一定参考价值。<br><br>';
+  } else {
+    msg += '<br>你的T2画像填写较少，建议回到T2完善后再看分析。<br><br>';
+  }
+  msg += '<hr class="section-divider">';
+
+  // Analyze each major with data-driven matching
+  t1Considered.forEach(r => {
+    const major = r.major;
+    const intro = r.intro;
+    const reason = r.reason || '未说明（可在T1补充）';
+    const kw = r.keywords || '';
+    const catName = r.cat || '';
+
+    let match = [];
+
+    // -- 1. 学科匹配度检测 --
+    const requiredSubjects = getMajorRequiredSubjects(major);
+    const likedMatches = requiredSubjects.filter(s => likeSubjects.includes(s));
+    const hatedConflicts = requiredSubjects.filter(s => hateSubjects.includes(s));
+
+    if (likedMatches.length > 0) {
+      match.push('✅ 你喜欢的' + likedMatches.join('、') + '是该专业核心基础');
+    }
+    if (hatedConflicts.length > 0) {
+      match.push('❌ <strong>硬伤</strong>：专业需要' + hatedConflicts.join('、') + '，但T2标注为不喜欢');
+    }
+
+    // -- 2. 培养周期 vs 经济约束 --
+    const isLongCycle = /临床|口腔|基础医学|中医学|中西医|法医学/.test(major);
+    const isMediumCycle = /法学|建筑|药学/.test(major);
+    if (isLongCycle && needIndependence) {
+      match.push('❌ 冲突：' + major.replace(/^\d+\s*/, '') + '培养周期长(5+3年)，但T2需要尽快独立');
+    } else if (isMediumCycle && needIndependence) {
+      match.push('⚠️ ' + major.replace(/^\d+\s*/, '') + '成长周期较长，与"尽快独立"存在一定矛盾');
+    }
+
+    // -- 3. 收入速度匹配 --
+    const isHighPay = /计算机|软件|人工智能|电子信息|通信|电气|金融/.test(major);
+    const isSlowIncome = /临床|口腔|基础医学|中医学|药学|法学|建筑/.test(major);
+    const isLowPay = /工商管理|公共管理|旅游|图书|档案|中文|历史|哲学|新闻/.test(major);
+
+    if (isHighPay && quickMoney) match.push('✅ IT/电子类薪资起点高，与"快速赚钱"倾向匹配');
+    if (isSlowIncome && quickMoney) match.push('⚠️ 该专业前期收入较低，与"快速赚钱"倾向存在张力');
+    if (isSlowIncome && slowGrowth) match.push('✅ 该专业越老越吃香，与"越老越吃香"倾向匹配');
+    if (quickMoney && (major.includes('师范') || major.includes('教育'))) match.push('⚠️ 师范类薪资增长慢，与"快速赚钱"倾向有差距');
+
+    // -- 4. 稳定性匹配 --
+    const isStable = /师范|教育|医学|电气|水利|土木|公务员|公共管理|公安/.test(major);
+    const isUnstable = /创业|艺术|影视|音乐|美术|设计/.test(major);
+
+    if (isStable && wantStable) match.push('✅ 该专业就业稳定，与"希望稳定"倾向匹配');
+    if (isUnstable && wantStable) match.push('⚠️ 该专业就业不确定性高，与"希望稳定"倾向存在张力');
+    if (isUnstable && acceptRisk) match.push('✅ 该专业高风险高回报，与"接受不稳定"倾向匹配');
+
+    // -- 5. 职业壁垒/体面度 --
+    if ((/医学|法律|法学/.test(major) || major.includes('师范')) && wantBarrier) {
+      match.push('✅ 该专业有明确的职业壁垒（执业证/编制），不易被替代');
+    }
+    if ((/医学|法律|法学/.test(major) || major.includes('师范') || major.includes('金融')) && wantDignity) {
+      match.push('✅ 该专业社会认可度高，体面');
+    }
+    if ((/环境|材料|化工|生物工程|农学|采矿|地质/.test(major)) && wantDignity) {
+      match.push('⚠️ 该专业工作环境可能不被认为"体面"，与T2体面倾向有冲突');
+    }
+
+    // -- 6. 工作强度 --
+    if ((/计算机|软件|临床|医学|土木|建筑/.test(major)) && wantEasy) {
+      match.push('⚠️ 该专业工作强度较大（996/夜班/工地），与"偏好轻松"倾向有冲突');
+    }
+    if ((/计算机|软件|临床|医学/.test(major)) && canWorkHard) {
+      match.push('✅ 该专业需要投入大量精力，你T2表示可以努力');
+    }
+
+    // -- 7. 社会意义 --
+    const hasSocialMeaning = /医学|教育|师范|环境|法学|公安|公共管理|社会/.test(major);
+    if (hasSocialMeaning && careSocial) match.push('✅ 该专业社会意义强，与"在意社会意义"匹配');
+    if (hasSocialMeaning && quickMoney) match.push('⚠️ 该专业虽有意义但收入增长较慢');
+
+    // -- 8. 专业特有风险提示 --
+    if (kw.includes('天坑')) match.push('⚠️ ' + kw);
+    else if (kw) match.push('📌 ' + kw);
+
+    // -- 9. 行业趋势 --
+    const isHot = /计算机|人工智能|大数据|软件|电子信息|新能源|半导体/.test(major);
+    const isDeclining = /土木|建筑|材料|环境|新闻|工商管理/.test(major);
+    if (isHot) match.push('📈 该专业处于行业上升期，需求稳定增长');
+    if (isDeclining) match.push('📉 该专业所属行业近年面临结构性调整，需关注就业市场变化');
+
+    // -- 10. 文理/选科匹配 --
+    if (appData.examType === '老高考-文科' && /计算机|电子信息|电气|机械|土木|自动化/.test(major)) {
+      match.push('⚠️ 你是文科选科，该专业通常只招理科生，请核实招生计划');
+    }
+
+    if (match.length === 0) {
+      match.push('📝 根据你的T2画像，请进一步了解该专业的具体课程、就业方向和培养方案');
+    }
+
+    msg += '<div class="msg-content-block">';
+    msg += '<strong>' + r.major + '</strong> — ' + intro + '<br>';
+    msg += '📌 你的选择原因：' + reason;
+    if (kw) msg += '<br><span style="color:var(--warning)">⚠️ 模板提示：' + kw + '</span>';
+    msg += '<br>';
+    msg += '<strong>📊 结合T2画像的匹配分析：</strong><br>' + match.join('<br>');
+    msg += '</div>';
+  });
+
+  msg += '<hr class="section-divider">';
+  msg += '接下来进入探索环节。在我帮你圈定候选学校之前，你可以先问我几个问题想清楚，比如：<br><br>';
+  msg += '1️⃣ 这几个专业，哪个更值得用你的位次去冲？<br>';
+  msg += '2️⃣ 你倾向去哪些城市或区域？<br>';
+  msg += '3️⃣ 有没有特别想去、或者想排除的学校？<br>';
+  msg += '4️⃣ 你的位次查到了吗？这是后面冲稳保判定的关键数据。<br><br>';
+  msg += '想清楚了，直接说<strong>"帮我出候选名单"</strong>。';
+
+  addAIMessage(msg, [
+    {text:'帮我出候选名单', primary:true},
+    {text:'我还有问题要问'}
+  ]);
+  setStage(3, 0);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) { setStage(4, 0); runStage4(0); }
+    else { runStage3(0); }
+  };
+  window._messageHandler = (text) => {
+    if (text.includes('候选') || text.includes('名单')) { setStage(4, 0); runStage4(0); }
+    else { runStage3(0); }
+  };
+}
+
+// ---- Stage 3: 对话探索 ----
+function runStage3(step) {
+  setStage(3, 0);
+
+  addAIMessage('好的，你想了解什么？<br><br>可以问我：<br>• 某专业在哪些学校比较好？<br>• 去某城市有哪些学校？<br>• 某专业真实就业怎么样？<br>• 什么样的选科组合报某专业有优势？<br><br>或者可以直接告诉我：<strong>"去XX城市"、"排除XX学校"</strong>等偏好。', [
+    {text:'我想去上海'},{text:'我想去长三角'},{text:'帮我出候选名单', primary:true}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 2) { setStage(4, 0); runStage4(0); return; }
+    const cities = ['上海','长三角'];
+    appData.cityPrefs = cities[idx];
+    saveData(appData);
+    addAIMessage(`好的，已记录偏好城市：<strong>${cities[idx]}</strong>。<br><br>还有别的偏好吗？或者我帮你出候选名单？`, [
+      {text:'帮我出候选名单', primary:true},
+      {text:'再看看别的'}
+    ]);
+    window._quickReplyHandler = (idx2) => {
+      if (idx2 === 0) { setStage(4, 0); runStage4(0); }
+    };
+  };
+  window._messageHandler = (text) => {
+    if (text.includes('候选') || text.includes('名单')) { setStage(4, 0); runStage4(0); }
+    else if (text.includes('去') || text.includes('城市')) {
+      appData.cityPrefs = text;
+      saveData(appData);
+      addAIMessage(`已记录：${text}。要帮你出候选名单吗？`, [
+        {text:'帮我出候选名单', primary:true}
+      ]);
+      window._quickReplyHandler = () => { setStage(4, 0); runStage4(0); };
+    } else {
+      // Generic response
+      addAIMessage(`收到。当你想好了，告诉我"帮我出候选名单"。`, [
+        {text:'帮我出候选名单', primary:true}
+      ]);
+      window._quickReplyHandler = () => { setStage(4, 0); runStage4(0); };
+    }
+  };
+}
+
+// ---- Stage 4: 候选草表 · 智能数据录入中心 ----
+// T4 working list (in-memory, saved to appData.candidates on finalize)
+let _t4Working = []; // [{name,city,tag,rank24,rank23,rank22,score24,plan,notes}]
+
+function runStage4(step) {
+  setStage(4, 0);
+  clearQuickReplies();
+
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  if (t1Considered.length === 0) {
+    addAIMessage('出候选名单之前，需要你先在T1表里至少选1个考虑的专业类。<br><br>要打开T1表吗？', [
+      {text:'打开T1表', primary:true}
+    ]);
+    window._quickReplyHandler = () => { openT1Modal(); };
+    return;
+  }
+
+  const userRank = parseInt(appData.rank || '0');
+  if (!userRank) {
+    addAIMessage('<div class="msg-content-block warning"><strong>⚠️ 位次还没填。</strong><br>'
+      + '位次是冲稳保判定的核心。请去省考试院查一分一段表后告诉我。</div>', [
+      {text:'我先用估分继续'}
+    ]);
+    window._quickReplyHandler = () => { openT4Hub(); };
+    window._messageHandler = (text) => {
+      const m = text.match(/(\d[\d,]*)/);
+      if (m) { appData.rank = m[1].replace(/,/g,''); saveData(appData); openT4Hub(); }
+      else { openT4Hub(); }
+    };
+    return;
+  }
+
+  // Generate profile analysis before opening hub
+  _profileCache = null; // Force regeneration
+  generateProfileSummary();
+
+  // Pre-populate working list from saved candidates
+  loadT4WorkingFromSaved();
+  openT4Hub();
+}
+
+function loadT4WorkingFromSaved() {
+  if (appData.candidates.length > 0) {
+    _t4Working = appData.candidates.map(c => ({
+      name: c.name,
+      city: c.city || '',
+      tag: c.tag || '',
+      tier: c.tag_ckwb || '',
+      rank24: c._rankYear || '',
+      rank23: '',
+      rank22: '',
+      score24: c._scoreYear || '',
+      plan: c.plan || '',
+      notes: c.notes || ''
+    }));
+  }
+}
+
+function openT4Hub() {
+  addAIMessage('已打开<strong>画像驱动智能搜索中心</strong>。<br>'
+    + '系统已分析你的T1专业选择 + T2个人画像，准备好为你推荐院校。<br><br>'
+    + '• 🧬 <strong>画像智能搜索</strong>：AI 读取你的画像，联网搜索冲/稳/保院校<br>'
+    + '• 📎 手动搜索链接：AI搜索不稳定时备用<br>'
+    + '• 📋 批量粘贴解析：手动搜索后可批量导入<br>'
+    + '• 📊 实时预览k值和冲稳保分类',
+    [{text:'📊 打开智能搜索中心', primary:true}]
+  );
+  window._quickReplyHandler = () => { showSearchHub(); };
+  window._messageHandler = (text) => {
+    // If user pastes raw data directly, try to parse
+    const parsed = parseSchoolData(text);
+    if (parsed.length > 0) {
+      parsed.forEach(p => _t4Working.push(p));
+      addAIMessage('✅ 已从你粘贴的内容中解析出 <strong>' + parsed.length + '</strong> 条院校数据。<br>要打开录入中心确认吗？', [
+        {text:'打开录入中心确认', primary:true}
+      ]);
+      window._quickReplyHandler = () => { showSearchHub(); };
+    } else {
+      showSearchHub();
+    }
+  };
+}
+
+// ====== T4 Search Hub ======
+function showSearchHub() {
+  const body = document.getElementById('t4ModalBody');
+  const province = appData.province || '你所在的省份';
+  const authority = PROVINCE_AUTHORITY[appData.province];
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  const majors = t1Considered.map(r => r.major.replace(/^\d+\s*/, '')).join('、') || '你的专业';
+  const userRank = appData.rank || '';
+  const userScore = appData.totalScore || '';
+  const searchQ = encodeURIComponent(majors + ' ' + province + ' 录取位次 ' + getDataYear());
+
+  // 确保画像已生成
+  if (!_profileCache) { generateProfileSummary(); }
+
+  let html = '';
+
+  // ====== Section P: 画像分析摘要 ======
+  const t2FilledCount = appData.t2Data.filter(item => item.prefilledValue && item.prefilledValue.trim()).length;
+  html += '<div class="search-section" style="background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(59,130,246,0.04));border:1px solid rgba(16,185,129,0.12);">';
+  html += '<h3>🧬 你的综合画像分析</h3>';
+  html += '<p style="font-size:12px;color:var(--text-secondary);line-height:1.7;">';
+  html += '<strong>专业意向：</strong>' + majors + '（' + t1Considered.length + '个专业类）';
+  if (appData.top3Majors && appData.top3Majors.length > 0) {
+    html += ' | <strong>Top3：</strong>' + appData.top3Majors.join('、');
+  }
+  html += '<br>';
+
+  // T2 summary
+  const t2Groups = ['地域倾向','经济能力','个人偏好','未来规划'];
+  const t2FilledGroups = [];
+  t2Groups.forEach(g => {
+    const items = appData.t2Data.filter(item => item.group === g && item.prefilledValue && item.prefilledValue.trim());
+    if (items.length > 0) t2FilledGroups.push(g + '（' + items.length + '项）');
+  });
+  html += '<strong>T2画像已填：</strong>' + (t2FilledGroups.length > 0 ? t2FilledGroups.join('、') : '尚未填写') + '（共' + t2FilledCount + '/22项）';
+  html += '<br>';
+
+  // k-value tier summary（修正：位次越小=学校越好）
+  if (userRank) {
+    const r = parseInt(userRank);
+    const chongMin = Math.round(r * 0.50);
+    const chongMax = Math.round(r * 0.95);
+    const wenMin = Math.round(r * 0.95);
+    const wenMax = Math.round(r * 1.08);
+    const baoMin = Math.round(r * 1.08);
+    const baoMax = Math.round(r * 1.80);
+    html += '<strong>冲稳保位次区间：</strong>冲(k&lt;0.95) 位次≤' + chongMax.toLocaleString()
+      + ' | 稳(k=0.95~1.08) ' + wenMin.toLocaleString() + '~' + wenMax.toLocaleString()
+      + ' | 保(k&gt;1.08) 位次≥' + baoMin.toLocaleString();
+    html += '<br>';
+  }
+
+  // Conflict warnings
+  if (_profileCache && _profileCache.conflictWarnings && _profileCache.conflictWarnings.length > 0) {
+    html += '<span style="color:var(--warning);">⚠️ 检测到风险：</span><br>';
+    _profileCache.conflictWarnings.forEach(w => {
+      html += '<span style="color:var(--warning);font-size:11px;">&nbsp;&nbsp;' + w + '</span><br>';
+    });
+  }
+
+  html += '</p>';
+  html += '<div style="margin-top:4px;font-size:10px;color:var(--text-muted);">'
+    + '以上分析来自你填写的T1专业表、T2个人画像表、基础信息。<br>'
+    + '下方智能搜索将<strong>基于此画像</strong>为你匹配院校。</div>';
+  html += '</div>';
+
+  // ====== Section 0: 画像驱动智能搜索 ======
+  html += '<div class="search-section" style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);">';
+  html += '<h3>🤖 画像驱动智能搜索</h3>';
+  html += '<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">'
+    + 'AI 读取你的<strong>T1专业选择 + T2个人画像</strong>，联网搜索并推荐<strong>冲/稳/保</strong>三个阶段院校。<br>'
+    + '每所学校附带<strong>个性化匹配理由</strong>（如"你喜欢物理，该校电子信息是王牌"）。<br>'
+    + '<strong>搜索范围：</strong><span style="color:var(--primary)">' + majors + ' · ' + province + '</span> '
+    + (userRank ? '· 你的位次：<strong>' + userRank + '</strong>' : '（建议先填写位次）') + '</p>';
+
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<input type="text" id="t4SmartQuery" readonly '
+    + 'value="' + majors + ' ' + province + ' 录取位次 录取分数 ' + getDataYear() + '" '
+    + 'style="flex:1;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-secondary);font-size:13px;font-family:inherit;opacity:0.7;">';
+  html += '<button class="btn btn-primary" id="t4SmartSearchBtn" onclick="smartSearch()" style="white-space:nowrap;">'
+    + '🧬 画像智能搜索</button>';
+  html += '</div>';
+
+  html += '<div id="t4SmartSearchResult" style="margin-top:10px;display:none;"></div>';
+  html += '</div>';
+
+  // Section 1: Smart search links
+  html += '<div class="search-section">';
+  html += '<h3>🔍 一键搜索链接（手动辅助）</h3>';
+  html += '<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">'
+    + '基于你的数据自动生成的搜索链接，AI搜索不稳定时手动备用：</p>';
+  html += '<div class="search-links">';
+
+  // 阳光高考
+  html += '<a class="search-link-card" href="https://gaokao.chsi.com.cn/sch/search--ss-on,option-qg,searchType-1,start-0.dhtml" target="_blank">'
+    + '<span class="label">🏫 阳光高考院校库</span>'
+    + '<span class="hint">搜索院校信息与历年录取数据</span></a>';
+
+  // 省考试院
+  if (authority) {
+    html += '<a class="search-link-card" href="' + authority.url + '" target="_blank">'
+      + '<span class="label">📋 ' + authority.name + '</span>'
+      + '<span class="hint">查一分一段表 + 历年录取统计</span></a>';
+  }
+
+  // 百度搜索
+  html += '<a class="search-link-card" href="https://www.baidu.com/s?wd=' + searchQ + '" target="_blank">'
+    + '<span class="label">🔎 百度搜索</span>'
+    + '<span class="hint">"' + majors + ' ' + province + ' 录取位次"</span></a>';
+
+  // 搜狗微信
+  html += '<a class="search-link-card" href="https://weixin.sogou.com/weixin?type=2&query=' + searchQ + '" target="_blank">'
+    + '<span class="label">📱 微信公众号搜索</span>'
+    + '<span class="hint">搜微信公众号文章里的整理数据</span></a>';
+
+  html += '</div></div>';
+
+  // Section 2: Bulk paste
+  html += '<div class="search-section">';
+  html += '<h3>📋 批量粘贴（手动备选）</h3>';
+  html += '<p class="paste-hint">从搜索结果里复制院校数据粘贴到下面，格式不限。<br>'
+    + '<strong>支持格式：</strong> 院校名 + 城市 + ' + getDataYear() + '位次 + ' + getDataYear() + '分数 各字段用空格/Tab/逗号分隔即可。<br>'
+    + '例如："安徽医科大学 合肥 公办 45000 578"</p>';
+  html += '<textarea class="paste-area" id="t4PasteArea" placeholder="粘贴从网站上复制的院校数据...&#10;&#10;示例：&#10;安徽医科大学 合肥 公办 45000位次 578分&#10;皖南医学院 芜湖 公办 44100位次 573分"></textarea>';
+  html += '<div style="margin-top:8px;display:flex;gap:8px;">';
+  html += '<button class="btn btn-primary" onclick="parseAndAddCandidates()">🔍 解析并添加到列表</button>';
+  html += '<button class="btn" onclick="document.getElementById(\'t4PasteArea\').value=\'\'">清空</button>';
+  html += '</div>';
+  html += '<div class="parse-result" id="t4ParseResult"></div>';
+  html += '</div>';
+
+  // Section 3: Manual single entry
+  html += '<div class="search-section">';
+  html += '<h3>✍️ 逐条手动录入</h3>';
+  html += '<div class="manual-entry">';
+  html += '<input type="text" id="t4mName" placeholder="院校名称*">';
+  html += '<input type="text" id="t4mCity" placeholder="城市">';
+  html += '<select id="t4mTag"><option value="">办学层次</option>'
+    + '<option>985</option><option>211</option><option>双一流</option><option>公办</option><option>民办</option><option>省重点</option></select>';
+  html += '<input type="text" id="t4mRank24" placeholder="' + getDataYear() + '录取位次*">';
+  html += '<input type="text" id="t4mScore24" placeholder="' + getDataYear() + '录取分数">';
+  html += '<input type="text" id="t4mRank23" placeholder="2023录取位次">';
+  html += '<input type="text" id="t4mRank22" placeholder="2022录取位次">';
+  html += '<input type="text" id="t4mPlan" placeholder="' + getDataYear() + '招生计划">';
+  html += '<input type="text" id="t4mNotes" placeholder="备注">';
+  html += '</div>';
+  html += '<button class="btn btn-primary" onclick="addManualCandidate()" style="width:100%;">➕ 添加这条院校</button>';
+  html += '</div>';
+
+  // Section 4: Current candidate editor
+  html += '<div class="search-section">';
+  html += '<h3>📊 当前候选列表（' + _t4Working.length + ' 所）</h3>';
+  if (_t4Working.length > 0) {
+    html += renderCandidateEditorInner();
+  } else {
+    html += '<div style="text-align:center;padding:24px;color:var(--text-muted);">'
+      + '还没有添加任何院校。<br>'
+      + '点击上方 <strong>"🧬 画像智能搜索"</strong> 让 AI 基于你的画像推荐院校，<br>'
+      + '或通过搜索链接手动查询后粘贴回来。</div>';
+  }
+  html += '</div>';
+
+  // Summary
+  if (_t4Working.length > 0) {
+    const tierCounts = { '冲': 0, '稳': 0, '保': 0 };
+    _t4Working.forEach(c => { if (tierCounts[c.tier] !== undefined) tierCounts[c.tier]++; });
+    html += '<div class="candidate-summary">'
+      + '已录入 <strong>' + _t4Working.length + '</strong> 所院校 '
+      + (tierCounts['冲'] > 0 ? '<span class="tag tag-chong" style="margin:0 2px;">冲' + tierCounts['冲'] + '</span>' : '')
+      + (tierCounts['稳'] > 0 ? '<span class="tag tag-wen" style="margin:0 2px;">稳' + tierCounts['稳'] + '</span>' : '')
+      + (tierCounts['保'] > 0 ? '<span class="tag tag-bao" style="margin:0 2px;">保' + tierCounts['保'] + '</span>' : '')
+      + '<br>点击右下角 <strong>"✅ 生成候选草表"</strong> 将自动计算k值并分类冲稳保。<br>'
+      + '<span style="color:var(--text-muted);font-size:11px;">提示：至少录入 6 所以上才能做冲稳保配比。</span>'
+      + '</div>';
+  }
+
+  body.innerHTML = html;
+  document.getElementById('t4Modal').style.display = 'flex';
+}
+
+// ====== T1+T2 综合画像分析引擎 ======
+// 在进入阶段四时调用，生成驱动智能搜索的学生画像
+let _profileCache = null; // 缓存最近一次分析结果
+
+function generateProfileSummary(userText) {
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  const userRank = parseInt(appData.rank) || 0;
+  const userScore = parseInt(appData.totalScore) || 0;
+  const province = appData.province || '';
+  const subjects = appData.subjects || '';
+  const restrictions = appData.restrictions || '';
+
+  // 构建 T2 画像字典
+  const t2 = {};
+  appData.t2Data.forEach(item => {
+    if (item.prefilledValue && item.prefilledValue.trim()) {
+      t2[item.item] = item.prefilledValue.trim();
+    }
+  });
+
+  // ===== 1. 城市偏好分析 =====
+  let citySummary = '';
+  const stayLocal = t2['留在本地 or 外地'] || '';
+  const bigCity = t2['发达城市机会多 or 小城市压力小'] || '';
+  const userCityPref = appData.cityPrefs || '';
+
+  if (stayLocal.includes('外地')) citySummary += '倾向外地发展；';
+  else if (stayLocal.includes('本地')) citySummary += '倾向留在本地；';
+  if (bigCity.includes('大城市') || bigCity.includes('发达')) citySummary += '偏好发达/大城市；';
+  else if (bigCity.includes('小城市')) citySummary += '偏好小城市低压生活；';
+  if (userCityPref) citySummary += '用户指定偏好城市：' + userCityPref + '；';
+  if (!citySummary) citySummary = '城市偏好未明确填写；';
+
+  // ===== 2. 经济约束分析 =====
+  let econSummary = '';
+  const canStudyAbroad = (t2['家庭支持我出国吗'] || '').includes('是');
+  const canStudyPostgrad = (t2['家庭支持我读研吗'] || '').includes('是');
+  const needIndependence = (t2['家庭需要我尽快独立吗'] || '').includes('是') || (t2['家庭需要我尽快独立吗'] || '').includes('尽快');
+
+  if (!canStudyAbroad) econSummary += '不支持出国；';
+  if (!canStudyPostgrad) econSummary += '不支持读研，建议本科就业导向；';
+  else econSummary += '支持读研；';
+  if (needIndependence) econSummary += '需要尽快经济独立；';
+  if (!econSummary) econSummary = '经济情况未明确填写；';
+
+  // ===== 3. 学科能力分析 =====
+  let subjectSummary = '';
+  const likeSubjects = (t2['我喜欢的学科'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const hateSubjects = (t2['我不喜欢的学科'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const goodAt = (t2['我擅长做的事'] || '').split(/[,，、\s]+/).filter(Boolean);
+  const badAt = (t2['我不擅长做的事'] || '').split(/[,，、\s]+/).filter(Boolean);
+
+  if (likeSubjects.length > 0) subjectSummary += '喜欢学科：' + likeSubjects.join('、') + '；';
+  if (hateSubjects.length > 0) subjectSummary += '不喜欢学科：' + hateSubjects.join('、') + '；';
+  if (goodAt.length > 0) subjectSummary += '擅长：' + goodAt.join('、') + '；';
+  if (badAt.length > 0) subjectSummary += '不擅长：' + badAt.join('、') + '；';
+  if (!subjectSummary) subjectSummary = '学科偏好未明确填写；';
+
+  // ===== 4. 职业&价值倾向分析 =====
+  let careerSummary = '';
+  const preferJob = t2['我倾向的职业'] || '';
+  const avoidJob = t2['我拒绝的职业'] || '';
+  const hobbies = t2['我的兴趣爱好'] || '';
+  const hateEnv = t2['我不能忍受的环境/事物'] || '';
+  const socialMeaning = t2['在意社会意义 or 不在意'] || '';
+  const quickMoney = (t2['希望快速赚钱 or 越老越吃香'] || '');
+  const wantStable = (t2['希望工作稳定 or 接受不稳定'] || '');
+  const workHard = (t2['可以很努力 or 工作轻松'] || '');
+  const wantDignity = (t2['接受工作环境恶劣 or 要体面'] || '');
+  const wantBarrier = (t2['希望工作有壁垒 or 开放竞争'] || '');
+
+  if (preferJob) careerSummary += '倾向职业：' + preferJob + '；';
+  if (avoidJob) careerSummary += '拒绝职业：' + avoidJob + '；';
+  if (hobbies) careerSummary += '兴趣：' + hobbies + '；';
+  if (hateEnv) careerSummary += '不能忍受：' + hateEnv + '；';
+  if (socialMeaning.includes('在意')) careerSummary += '在意社会意义；';
+  if (quickMoney.includes('快速')) careerSummary += '希望快速赚钱；';
+  else if (quickMoney.includes('越老越吃香')) careerSummary += '接受越老越吃香（前期收入低也可以）；';
+  if (wantStable.includes('稳定')) careerSummary += '希望工作稳定；';
+  else if (wantStable.includes('不稳定')) careerSummary += '接受不稳定/高风险高回报；';
+  if (workHard.includes('努力')) careerSummary += '可以很努力投入工作；';
+  else if (workHard.includes('轻松')) careerSummary += '偏好工作强度适中；';
+  if (wantDignity.includes('体面')) careerSummary += '需要职业体面；';
+  if (wantBarrier.includes('壁垒')) careerSummary += '希望职业有壁垒（不易被替代）；';
+  else if (wantBarrier.includes('开放')) careerSummary += '接受开放竞争环境；';
+  if (!careerSummary) careerSummary = '职业偏好未明确填写；';
+
+  // ===== 5. MBTI/霍兰德 =====
+  let testSummary = '';
+  const mbti = t2['MBTI'] || '';
+  const holland = t2['霍兰德职业测评'] || '';
+  if (mbti) testSummary += 'MBTI：' + mbti + '；';
+  if (holland) testSummary += '霍兰德：' + holland + '；';
+
+  // ===== 6. 专业选择汇总 =====
+  let majorSummary = '';
+  if (t1Considered.length > 0) {
+    majorSummary = 'T1选中' + t1Considered.length + '个专业类：';
+    t1Considered.forEach((r, i) => {
+      majorSummary += (i > 0 ? '、' : '') + r.major.replace(/^\d+\s*/, '');
+      if (r.reason && r.reason.trim()) majorSummary += '（原因：' + r.reason.trim() + '）';
+    });
+
+    // Top 3
+    if (appData.top3Majors && appData.top3Majors.length > 0) {
+      majorSummary += '；Top3优先：' + appData.top3Majors.join('、');
+    }
+  }
+
+  // ===== 7. T1专业 ↔ T2画像冲突检测 =====
+  let conflictSummary = '';
+  const conflictWarnings = [];
+  t1Considered.forEach(r => {
+    const m = r.major;
+    // 检测学科冲突
+    if (hateSubjects.length > 0) {
+      const majorNeedsSubjects = getMajorRequiredSubjects(m);
+      const conflicts = majorNeedsSubjects.filter(s => hateSubjects.includes(s));
+      if (conflicts.length > 0) {
+        conflictWarnings.push('⚠️ ' + m.replace(/^\d+\s*/, '') + '需要' + conflicts.join('、') + '但T2标注为不喜欢');
+      }
+    }
+    // 检测培养周期 vs 经济约束
+    const isLongCycle = /临床|口腔|基础医学|中医学/.test(m);
+    if (isLongCycle && needIndependence) {
+      conflictWarnings.push('⚠️ ' + m.replace(/^\d+\s*/, '') + '培养周期长(5+3年)但T2标注需要尽快独立');
+    }
+    // 检测风险偏好冲突
+    const isRisky = /生物|环境|材料|化工/.test(m) && /天坑/.test(r.keywords || '');
+    if (isRisky && wantStable.includes('稳定')) {
+      conflictWarnings.push('⚠️ ' + m.replace(/^\d+\s*/, '') + '就业风险偏高但T2标注偏好稳定');
+    }
+  });
+  if (conflictWarnings.length > 0) {
+    conflictSummary = conflictWarnings.join('\n');
+  }
+
+  // ===== 8. k值区间计算（正确方向：位次越小=学校越好） =====
+  let kSummary = '';
+  if (userRank > 0) {
+    const defTol = appData.deficitTolerance || '适中(亏10%)';
+    // 冲：学校位次应比用户好 → 更小的数值 → k < 0.95
+    const chongMax = Math.round(userRank * 0.95);   // 冲上限=接近用户位次
+    const chongMin = Math.round(userRank * 0.50);    // 冲下限=亏50%太激进的不推
+    // 稳：学校位次与用户接近 → 0.95 ≤ k ≤ 1.08
+    const wenMax = Math.round(userRank * 1.08);      // 稳上限=略低于用户
+    const wenMin = Math.round(userRank * 0.95);      // 稳下限=略高于用户
+    // 保：学校位次比用户差 → 更大的数值 → k > 1.08
+    const baoMax = Math.round(userRank * 1.80);      // 保上限=差距太大也没意义
+    const baoMin = Math.round(userRank * 1.08);      // 保下限=刚过稳线
+    kSummary = '用户省排名约' + userRank.toLocaleString()
+      + '（分数约' + (userScore || '?') + '），亏分容忍：' + defTol + '。\n'
+      // 注意：位次数值越小学校越好！冲=更小位次，保=更大位次
+      + '冲(k<0.95)：院校录取位次应 ≤ ' + chongMax.toLocaleString() + '（比用户好），最低考虑' + chongMin.toLocaleString() + '\n'
+      + '稳(k=0.95~1.08)：院校位次在' + wenMin.toLocaleString() + '~' + wenMax.toLocaleString() + '\n'
+      + '保(k>1.08)：院校位次应 ≥ ' + baoMin.toLocaleString() + '（比用户差），最高到' + baoMax.toLocaleString();
+  }
+
+  // ===== 构建完整画像摘要 =====
+  let summary = '【学生综合画像分析】\n';
+  summary += '基本信息：' + province + ' | ' + (appData.examType || '') + ' | 选科：' + (subjects || '未填') + '\n';
+  if (kSummary) summary += kSummary + '\n\n';
+  summary += '【专业意向】\n' + majorSummary + '\n\n';
+  summary += '【城市偏好】\n' + citySummary + '\n\n';
+  summary += '【经济约束】\n' + econSummary + '\n\n';
+  summary += '【学科能力】\n' + subjectSummary + '\n\n';
+  summary += '【职业&价值倾向】\n' + careerSummary + '\n';
+  if (testSummary) summary += '【评测参考】\n' + testSummary + '\n';
+  if (conflictSummary) summary += '\n【⚠️ 风险提示】\n' + conflictSummary + '\n';
+
+  // 缓存
+  _profileCache = { summary, t1Considered, t2, conflictWarnings, userRank, userScore, province };
+
+  return summary;
+}
+
+// 根据专业类名推断需要的学科
+function getMajorRequiredSubjects(major) {
+  const mapping = {
+    '计算机': ['数学', '物理'], '软件': ['数学'], '人工智能': ['数学', '物理'],
+    '电子信息': ['物理', '数学'], '通信': ['物理', '数学'], '电气': ['物理', '数学'],
+    '机械': ['物理', '数学'], '自动化': ['物理', '数学'], '仪器': ['物理'],
+    '土木': ['物理', '数学'], '建筑': ['物理', '美术'], '水利': ['物理'],
+    '临床': ['生物', '化学'], '口腔': ['生物', '化学'], '基础医学': ['生物', '化学'],
+    '药学': ['化学', '生物'], '中药': ['化学', '生物'], '护理': ['生物', '化学'],
+    '数学': ['数学'], '物理': ['物理', '数学'], '化学': ['化学', '数学'],
+    '生物': ['生物', '化学'], '统计': ['数学'], '心理': ['生物'],
+    '材料': ['化学', '物理'], '化工': ['化学'], '环境': ['化学', '生物'],
+    '食品': ['化学', '生物'], '生物工程': ['生物', '化学'],
+    '法学': ['政治'], '经济': ['数学'], '金融': ['数学'],
+    '航空航天': ['物理', '数学'],
+    '地理': ['地理'], '地质': ['地理', '化学'],
+    '外语': ['英语'], '中文': ['语文'], '新闻': ['语文'],
+    '艺术': [], '音乐': [], '美术': [], '设计': [], '体育': []
+  };
+  for (const [key, subjects] of Object.entries(mapping)) {
+    if (major.includes(key)) return subjects;
+  }
+  return [];
+}
+
+// ====== Smart Search via 火山引擎 Ark Bot ======
+let _smartSearchActive = false;
+
+async function smartSearch() {
+  if (_smartSearchActive) return;
+  _smartSearchActive = true;
+
+  const btn = document.getElementById('t4SmartSearchBtn');
+  const resultEl = document.getElementById('t4SmartSearchResult');
+
+  // === 检查火山引擎 Ark Bot 是否已配置 ===
+  const cfg = window.APP_CONFIG || {};
+  const botId = cfg.botId || '';
+  const apiKey = cfg.apiKey || '';
+  if (!botId || botId === 'bot-你的BotID' || !apiKey || apiKey === '你的APIKey') {
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '<div class="search-status warning">'
+      + '<strong>🔧 智能搜索未配置</strong><br>'
+      + '<span style="font-size:12px;">需要在火山引擎创建联网搜索 Bot。<br>'
+      + '配置方法请查看 <code>worker/volcano-bot-guide.md</code>，只需 5 分钟。<br><br>'
+      + '目前可以：<br>'
+      + '① 点击 <strong>"📎 手动搜索链接"</strong> 打开搜索结果复制回来<br>'
+      + '② 使用下方的 <strong>"📋 批量粘贴解析"</strong> 文本框</span>'
+      + '</div>';
+    _smartSearchActive = false;
+    return;
+  }
+
+  // ===== 生成或使用缓存的学生画像 =====
+  if (!_profileCache) {
+    generateProfileSummary();
+  }
+  const profile = _profileCache;
+  const userRank = profile.userRank || null;
+  const userScore = profile.userScore || null;
+  const province = profile.province || '';
+  const examType = appData.examType || '';
+
+  if (!userRank) {
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '<div style="color:var(--warning);padding:8px;">⚠️ 请先在基础信息中填写<strong>省排名（位次）</strong>，这是冲稳保判定的核心数据。</div>';
+    _smartSearchActive = false;
+    return;
+  }
+
+  // ===== 计算冲稳保位次区间（修正：位次越小=学校越好） =====
+  // 冲=学校位次低于用户（更好但难进）  稳=位次接近  保=位次高于用户（更易进）
+  const chongMax = Math.round(userRank * 0.95);   // 冲上限：接近用户水平
+  const chongMin = Math.round(userRank * 0.50);    // 冲下限：不推荐差距太大的"送死"选项
+  const wenMax   = Math.round(userRank * 1.08);    // 稳上限：略低于用户
+  const wenMin   = Math.round(userRank * 0.95);    // 稳下限：略高于用户
+  const baoMax   = Math.round(userRank * 1.80);    // 保上限：太低也没参考价值
+  const baoMin   = Math.round(userRank * 1.08);    // 保下限：刚过稳线
+  // 分数区间（用于辅助AI搜索）
+  const scoreRangeLow = Math.max(userScore - 30, 400);
+  const scoreRangeHigh = Math.min(userScore + 20, 700);
+
+  // UI: searching state
+  btn.disabled = true;
+  btn.textContent = '⏳ AI 分析画像 + 搜索中...';
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="search-status searching">'
+    + '<div class="spinner"></div>'
+    + '<span>DeepSeek 正在分析你的画像 + 联网搜索院校数据...</span>'
+    + '<div style="font-size:10px;color:var(--text-muted);margin-top:4px;">'
+    + '搜索冲/稳/保三个档位约需 10-25 秒，请耐心等待</div>'
+    + '</div>';
+
+  try {
+    // Craft comprehensive prompt — 分数段驱动搜索，回来本地算k值
+    const prompt = `你是一位高考志愿数据检索助手。请联网搜索，为以下学生查找可报考院校。
+
+===== 学生画像 =====
+省份：${province} | 分数约${userScore} | 省排名约${userRank.toLocaleString()}
+选科：${examType || '未确认'}
+目标专业：${profile.t1Considered.map(r => r.major.replace(/^\\d+\\s*/, '')).join('、')}
+${profile.t1Considered.map(r => r.major.replace(/^\\d+\\s*/, '')).join('、')}在${province}的录取分数段大约在 ${scoreRangeLow}~${scoreRangeHigh} 分之间。
+
+===== 搜索要求 =====
+请搜索${province}省开设上述专业的院校，**重点搜索录取分在 ${scoreRangeLow}~${scoreRangeHigh} 分段的学校**。
+**选科硬过滤（重要）**：只返回选科要求与"${examType || '未确认'}"匹配的院校/专业组。不匹配的不要返回。
+同时也可以搜索以下三个档位以覆盖冲稳保：
+1. **比学生稍好的学校**：录取分 ${Math.min(userScore + 15, 700)}~${Math.min(userScore + 30, 700)} 分段
+2. **与学生匹配的学校**：录取分 ${Math.max(userScore - 10, 300)}~${Math.min(userScore + 15, 700)} 分段
+3. **比学生稍低的学校**：录取分 ${Math.max(userScore - 30, 300)}~${Math.max(userScore - 10, 300)} 分段
+
+对每所学校标注它的录取分数和位次（必须是实数数字），我来根据学生位次（${userRank.toLocaleString()}）和学校位次算k值分类。
+
+===== 返回格式（严格JSON数组，不要markdown标记） =====
+[{
+  "name": "院校全称",
+  "city": "所在城市",
+  "tag": "985/211/双一流/公办/民办/省重点",
+  "subject_req": "该专业组的选科要求（如：物理+化学、历史+政治、不限等）",
+  "rank": ${getDataYear()}年该专业在${province}录取最低位次(数字),
+  "score": ${getDataYear()}年该专业在${province}录取最低分数(数字),
+  "match_reason": "1句话：为什么这所学校适合该学生（基于画像的专业/城市/经济/职业偏好匹配）",
+  "risk_flag": "如有风险（培养周期长但需尽快独立/讨厌的学科是核心课等）标注，无则为空",
+  "source": "数据来源URL"
+}]
+
+**硬性要求**：
+- rank和score必须是数字（不是字符串），不要编造，搜索不到就跳过
+- 每所学校的rank和score必须是该专业在${province}的实际录取数据，用${getDataYear()}年数据优先，辅以${getDataYear()-1}年
+- score必须在${scoreRangeLow}~${Math.min(userScore + 30, 700)}范围内
+- **选科过滤**：只返回subject_req与"${examType || '未确认'}"兼容的院校，不兼容的跳过
+- 共返回12-20所院校，覆盖不同层次
+- tag只能用：985、211、双一流、公办、民办、省重点
+- 直接输出JSON数组，不要\`\`\`json标记，不要解释文字`;
+
+    const resp = await fetch(cfg.arkEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: botId,
+        stream: false,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      let errMsg = 'HTTP ' + resp.status;
+      if (resp.status === 401) errMsg += '：API Key 无效，请检查 config.js';
+      else if (resp.status === 400) errMsg += '：Bot-ID 无效，请检查 config.js';
+      else if (resp.status === 429) errMsg += '：请求太频繁，请稍后重试';
+      else errMsg += '：' + (errText.substring(0, 200) || '未知错误');
+      resultEl.innerHTML = '<div class="search-status error">❌ ' + errMsg + '</div>';
+      return;
+    }
+
+    const data = await resp.json();
+    const content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    const references = data.references || [];
+
+    if (!content) {
+      resultEl.innerHTML = '<div class="search-status warning">'
+        + '⚠️ AI 未返回结构化数据。可能联网搜索未开启。<br>'
+        + '<span style="font-size:11px;color:var(--text-muted);">'
+        + '请在火山引擎后台确认 Bot 已开启"联网内容插件"并已发布。</span></div>';
+      return;
+    }
+
+    // Parse JSON from AI response (robust multi-strategy)
+    let schools = [];
+    try {
+      schools = JSON.parse(content);
+    } catch {
+      const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)```/) || content.match(/\[([\s\S]*)\]/);
+      if (jsonMatch) {
+        try {
+          schools = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } catch {
+          const arrMatch = content.match(/\[[\s\S]*\]/);
+          if (arrMatch) {
+            try { schools = JSON.parse(arrMatch[0]); } catch { /* fail */ }
+          }
+        }
+      }
+    }
+
+    // Fallback: extract from references
+    if (schools.length === 0 && references.length > 0) {
+      schools = _extractSchoolsFromReferences(references, province);
+      if (schools.length > 0) {
+        resultEl.innerHTML = '<div class="search-status info">'
+          + 'ℹ️ AI 未返回结构化JSON，已从搜索结果摘要中提取 <strong>' + schools.length + '</strong> 所院校。<br>'
+          + '<span style="font-size:10px;color:var(--text-muted);">位次/分数可能不完整，建议结合手动搜索确认。</span></div>';
+      }
+    }
+
+    if (schools.length === 0) {
+      resultEl.innerHTML = '<div class="search-status warning">'
+        + '⚠️ 未提取到结构化的院校数据。<br>'
+        + '<span style="font-size:11px;color:var(--text-muted);">'
+        + 'AI 返回内容如下（你可以复制到批量粘贴框手动解析）：<br>'
+        + '<textarea readonly style="width:100%;height:80px;margin-top:6px;font-size:11px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);">'
+        + content.substring(0, 2000) + '</textarea></span></div>';
+      return;
+    }
+
+    // ===== 本地验证 + 重算k值 + 过滤不合理院校 =====
+    // 策略：AI按分数段搜索返回原始数据 → 本地验算k值 → 过滤不合理 → 本地分配冲稳保
+    const validatedSchools = [];
+    const rejectedSchools = [];
+    for (const s of schools) {
+      const rank24 = parseInt(s.rank) || 0;
+      const score24 = parseInt(s.score) || 0;
+      const k = rank24 && userRank ? (rank24 / userRank) : 0;
+
+      // 验证1：位次必须在合理范围（k < 0.35 绝对不可能考上，k > 3.0 太低了没参考价值）
+      if (k > 0 && (k < 0.35 || k > 3.0)) {
+        rejectedSchools.push(s.name + '（位次' + rank24.toLocaleString() + ', k=' + k.toFixed(2) + '，超出合理范围）');
+        continue;
+      }
+
+      // 验证2：分数必须在可参考范围
+      if (score24 > 0 && (score24 < userScore - 50 || score24 > userScore + 40)) {
+        rejectedSchools.push(s.name + '（' + score24 + '分，与用户' + userScore + '分差距过大）');
+        continue;
+      }
+
+      // 本地重算冲稳保（不信任AI的分类）
+      let tier = '';
+      if (k > 0) {
+        if (k < 0.95) tier = '冲';
+        else if (k <= 1.08) tier = '稳';
+        else tier = '保';
+      }
+
+      validatedSchools.push({ ...s, k: k, tier: tier });
+    }
+
+    // Log rejected
+    if (rejectedSchools.length > 0) {
+      console.log('[智能搜索] 过滤了 ' + rejectedSchools.length + ' 所不合理院校：', rejectedSchools);
+    }
+
+    // Clear previous working list for fresh search
+    _t4Working = [];
+
+    // Convert to _t4Working format
+    for (const s of validatedSchools) {
+      let notesParts = [];
+      if (s.match_reason) notesParts.push('✅ ' + s.match_reason);
+      if (s.risk_flag && s.risk_flag.trim()) notesParts.push('⚠️ ' + s.risk_flag);
+      if (s.source) notesParts.push('📎 ' + s.source);
+
+      const entry = {
+        name: s.name || '',
+        city: s.city || '',
+        tag: s.tag || '',
+        tier: s.tier,
+        rank24: String(s.rank || ''),
+        rank23: '',
+        rank22: '',
+        score24: String(s.score || ''),
+        plan: '',
+        notes: notesParts.join(' | ')
+      };
+      _t4Working.push(entry);
+    }
+
+    // Sort by tier: 冲 → 稳 → 保, then by k ascending within each tier
+    const tierOrder = { '冲': 0, '稳': 1, '保': 2 };
+    _t4Working.sort((a, b) => {
+      const ta = tierOrder[a.tier] || 9;
+      const tb = tierOrder[b.tier] || 9;
+      if (ta !== tb) return ta - tb;
+      const ka = parseInt(a.rank24) / (userRank || 1);
+      const kb = parseInt(b.rank24) / (userRank || 1);
+      return ka - kb;
+    });
+
+    // Refresh UI
+    refreshCandidateEditor();
+
+    // Count tiers
+    const tierCounts = { '冲': 0, '稳': 0, '保': 0 };
+    _t4Working.forEach(c => {
+      if (tierCounts[c.tier] !== undefined) tierCounts[c.tier]++;
+    });
+
+    // Show comprehensive success summary
+    let summaryHtml = '<div class="search-status success">'
+      + '<strong>✅ 画像分析 + 智能搜索完成！</strong><br>'
+      + '<span style="font-size:12px;">基于你的T1专业选择、T2个人画像、位次区间，AI 搜索并推荐：</span><br>';
+
+    if (tierCounts['冲'] > 0) summaryHtml += '<span class="tag tag-chong" style="margin:2px;">冲 ' + tierCounts['冲'] + '所</span> ';
+    if (tierCounts['稳'] > 0) summaryHtml += '<span class="tag tag-wen" style="margin:2px;">稳 ' + tierCounts['稳'] + '所</span> ';
+    if (tierCounts['保'] > 0) summaryHtml += '<span class="tag tag-bao" style="margin:2px;">保 ' + tierCounts['保'] + '所</span> ';
+
+    summaryHtml += '<br><span style="font-size:10px;color:var(--text-muted);">k值区间：冲<' + (K_RANGES.chong.max).toFixed(2) + ' | 稳' + K_RANGES.wen.min.toFixed(2) + '~' + K_RANGES.wen.max.toFixed(2) + ' | 保>' + K_RANGES.wen.max.toFixed(2) + '</span>';
+    summaryHtml += '</div>';
+
+    resultEl.innerHTML = summaryHtml;
+
+    // Scroll to candidate list
+    setTimeout(() => {
+      const sections = document.getElementById('t4ModalBody').querySelectorAll('.search-section');
+      const last = sections[sections.length - 1];
+      if (last) last.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+
+  } catch (err) {
+    const isFetchError = err.message === 'Failed to fetch' || err.name === 'TypeError';
+    if (isFetchError) {
+      resultEl.innerHTML = '<div class="search-status warning">'
+        + '<strong>🌐 无法连接火山引擎</strong><br>'
+        + '<span style="font-size:12px;">可能的原因：<br>'
+        + '① 网络问题 — 检查是否能访问 ark.cn-beijing.volces.com<br>'
+        + '② 如果你在用代理/VPN，可能干扰了国内直连 — 尝试关闭<br>'
+        + '③ <code>config.js</code> 中 <code>arkEndpoint</code> 填错了<br><br>'
+        + '临时方案：使用下方的 <strong>"📎 手动搜索链接"</strong> 搜完复制回来</span>'
+        + '</div>';
+    } else {
+      resultEl.innerHTML = '<div class="search-status error">'
+        + '❌ 搜索失败：' + err.message + '</div>';
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 画像智能搜索';
+    _smartSearchActive = false;
+  }
+}
+
+// ====== Extract schools from Ark Bot search references ======
+function _extractSchoolsFromReferences(references, province) {
+  const schools = [];
+  const seen = new Set();
+  for (const ref of references) {
+    const title = ref.title || '';
+    const snippet = ref.summary || '';
+    const combined = title + ' ' + snippet;
+
+    // Match Chinese university names + location + rank patterns
+    const uniPattern = /([\u4e00-\u9fa5]{2,10}(?:大学|学院|医科大学|中医药大学|医学院))/g;
+    let match;
+    while ((match = uniPattern.exec(combined)) !== null) {
+      const name = match[1];
+      if (seen.has(name)) continue;
+      seen.add(name);
+
+      // Try to extract rank from snippet
+      const rankMatch = snippet.match(/(?:位次|排名|最低位次)[^\d]*(\d[\d,]*)/) || combined.match(/(\d[\d,]{2,})\s*(?:位次|名|位)/);
+      const scoreMatch = snippet.match(/(?:分数|最低分|录取分)[^\d]*(\d{3})/) || combined.match(/(\d{3})\s*(?:分)/);
+
+      schools.push({
+        name: name,
+        city: '',
+        tag: '',
+        rank: rankMatch ? parseInt(rankMatch[1].replace(/,/g, '')) : null,
+        score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+        source: ref.url || ''
+      });
+    }
+  }
+  return schools;
+}
+
+// ====== Smart Parser ======
+function parseSchoolData(text) {
+  const results = [];
+  const lines = text.split(/[\n\r]+/).filter(l => l.trim());
+
+  for (const line of lines) {
+    // Skip meta lines and headers
+    if (/院校名称|学校名称|序号|年份|位次|排名|录取|院校代码/.test(line) && !/\d{4,}/.test(line.replace(/[^\d]/g,''))) continue;
+    if (line.length < 5) continue;
+
+    // Normalize: replace common separators
+    let cleaned = line
+      .replace(/[，,、\t]+/g, ' ')
+      .replace(/位次|名次|排名/g, '')
+      .replace(/分$|分\s/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Try to extract rank (4-7 digit number) and score (3 digit number)
+    const numbers = cleaned.match(/\d+/g) || [];
+    let rank24 = '', score24 = '', rank23 = '', rank22 = '';
+
+    // Find rank numbers (typically 5-6 digits, ≥10000)
+    const rankNums = numbers.filter(n => parseInt(n) >= 5000 && parseInt(n) <= 999999);
+    // Find score numbers (typically 3 digits, 400-750)
+    const scoreNums = numbers.filter(n => parseInt(n) >= 300 && parseInt(n) <= 750);
+
+    if (rankNums.length >= 1) rank24 = rankNums[0];
+    if (rankNums.length >= 2) rank23 = rankNums[1];
+    if (rankNums.length >= 3) rank22 = rankNums[2];
+    if (scoreNums.length >= 1) score24 = scoreNums[0];
+
+    if (!rank24 || !rankNums[0]) continue; // Must have at least one rank
+
+    // Extract name: everything before the first number (the rank)
+    let namePart = cleaned;
+    const firstNumIdx = cleaned.search(/\d/);
+    if (firstNumIdx > 0) namePart = cleaned.substring(0, firstNumIdx).trim();
+
+    // Clean up the name
+    let name = namePart.replace(/[\d\s]+$/, '').trim();
+    if (name.length < 3) continue;
+
+    // Try to extract city and tag from name
+    let city = '';
+    let tag = '';
+
+    // Common city patterns
+    const cityPatterns = [
+      '北京','上海','天津','重庆',
+      '广州','深圳','杭州','南京','武汉','成都','西安','长沙','沈阳','青岛','大连',
+      '厦门','宁波','苏州','无锡','合肥','郑州','济南','福州','哈尔滨','长春','昆明',
+      '南宁','贵阳','南昌','太原','石家庄','兰州','海口','银川','西宁','拉萨','乌鲁木齐',
+      '芜湖','蚌埠','马鞍山','安庆','黄山','滁州','阜阳','宿州','六安','亳州','池州','宣城',
+      '潍坊','烟台','临沂','济宁','淄博','威海','泰安','日照','聊城','德州','滨州','菏泽','枣庄',
+      '锦州','鞍山','抚顺','本溪','丹东','营口','阜新','辽阳','铁岭','朝阳','盘锦','葫芦岛',
+      '湘潭','株洲','岳阳','衡阳','常德','郴州','益阳','娄底','邵阳','怀化','永州','张家界','吉首',
+      '桂林','柳州','北海','玉林','钦州','百色','河池','梧州',
+      '南充','绵阳','泸州','宜宾','德阳','乐山','眉山','内江','自贡','广元','遂宁','达州','攀枝花',
+      '新乡','洛阳','开封','南阳','安阳','许昌','焦作','商丘','信阳',
+      '徐州','扬州','镇江','南通','常州','泰州','盐城','淮安','连云港','宿迁',
+      '温州','绍兴','金华','嘉兴','湖州','台州','丽水','衢州','舟山',
+      '唐山','保定','廊坊','邯郸','秦皇岛','张家口','承德','沧州','邢台','衡水',
+      '十堰','荆州','宜昌','襄阳','黄石','鄂州','荆门','孝感','黄冈','咸宁',
+      '咸阳','宝鸡','延安','汉中','渭南','榆林',
+      '佳木斯','齐齐哈尔','牡丹江','大庆',
+      '吉林市','四平','延边','通化',
+      '遵义','六盘水','安顺',
+      '玉溪','曲靖','大理','红河',
+      '赣州','九江','景德镇','宜春',
+      '泉州','漳州','三明','龙岩',
+      '珠海','佛山','东莞','中山','惠州','江门','湛江','茂名','肇庆','梅州','汕头','韶关',
+      '三亚',
+      '石河子','克拉玛依'
+    ];
+
+    // Check if name starts with or contains any city name
+    for (const cp of cityPatterns) {
+      if (name.includes(cp)) {
+        // If the city is NOT the beginning, it's likely the city field
+        const idx = name.indexOf(cp);
+        if (idx > 2) {
+          city = cp;
+          // The part before might have tag info
+          const before = name.substring(0, idx).trim();
+          // Extract potential tag from name
+          for (const t of ['985','211','双一流','公办','民办','省重点','部属','省属']) {
+            if (before.includes(t) || name.includes(t)) {
+              tag = t;
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    // If no city found in name, name might just be the school name
+    if (!city) {
+      // Try to find tag in the cleaned line
+      for (const t of ['985','211','双一流','公办','民办','省重点']) {
+        if (cleaned.includes(t)) {
+          tag = t;
+          break;
+        }
+      }
+    }
+
+    results.push({
+      name: name.replace(/[·•\-—\s]+$/, '').trim(),
+      city: city,
+      tag: tag,
+      rank24: rank24,
+      rank23: rank23,
+      rank22: rank22,
+      score24: score24,
+      plan: '',
+      notes: ''
+    });
+  }
+
+  return results;
+}
+
+function parseAndAddCandidates() {
+  const text = document.getElementById('t4PasteArea').value;
+  const parsed = parseSchoolData(text);
+  const resultEl = document.getElementById('t4ParseResult');
+
+  if (parsed.length === 0) {
+    resultEl.style.display = 'block';
+    resultEl.style.background = 'rgba(239,68,68,0.08)';
+    resultEl.style.borderColor = 'rgba(239,68,68,0.2)';
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = '⚠️ 未能解析出有效院校数据。请确保每行包含"院校名 + 位次数字"。';
+    return;
+  }
+
+  parsed.forEach(p => _t4Working.push(p));
+  resultEl.style.display = 'block';
+  resultEl.style.background = 'rgba(16,185,129,0.08)';
+  resultEl.style.borderColor = 'rgba(16,185,129,0.2)';
+  resultEl.style.color = 'var(--success)';
+  resultEl.textContent = '✅ 成功解析 ' + parsed.length + ' 条院校数据，已添加到候选列表。';
+
+  // Clear paste area
+  document.getElementById('t4PasteArea').value = '';
+
+  // Refresh editor
+  refreshCandidateEditor();
+}
+
+function addManualCandidate() {
+  const name = document.getElementById('t4mName').value.trim();
+  const city = document.getElementById('t4mCity').value.trim();
+  const tag = document.getElementById('t4mTag').value;
+  const rank24 = document.getElementById('t4mRank24').value.trim();
+  const score24 = document.getElementById('t4mScore24').value.trim();
+  const rank23 = document.getElementById('t4mRank23').value.trim();
+  const rank22 = document.getElementById('t4mRank22').value.trim();
+  const plan = document.getElementById('t4mPlan').value.trim();
+  const notes = document.getElementById('t4mNotes').value.trim();
+
+  if (!name || !rank24) {
+    alert('院校名称和' + getDataYear() + '录取位次为必填项。');
+    return;
+  }
+
+  _t4Working.push({ name, city, tag, rank24, rank23, rank22, score24, plan, notes });
+
+  // Clear form
+  ['t4mName','t4mCity','t4mRank24','t4mScore24','t4mRank23','t4mRank22','t4mPlan','t4mNotes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('t4mTag').value = '';
+
+  refreshCandidateEditor();
+}
+
+function deleteT4Candidate(idx) {
+  _t4Working.splice(idx, 1);
+  refreshCandidateEditor();
+}
+
+function renderCandidateEditorInner() {
+  const userRank = parseInt(appData.rank || '1');
+
+  let html = '<table class="candidate-edit-table"><thead><tr>'
+    + '<th>#</th><th>院校名称</th><th>城市</th><th>层次</th>'
+    + '<th>' + getDataYear() + '位次</th><th>' + getDataYear() + '分</th><th>k值</th><th>分类</th>'
+    + '<th>AI匹配说明</th><th>操作</th>'
+    + '</tr></thead><tbody>';
+
+  _t4Working.forEach((c, i) => {
+    const rank24 = parseInt(c.rank24) || 0;
+    const k = rank24 && userRank ? (rank24 / userRank) : 0;
+    let kDisplay = '—', kClass = '', ckwb = '—', ckwbClass = '';
+
+    if (k > 0) {
+      kDisplay = k.toFixed(2);
+      if (k < 0.95) { ckwb = '冲'; kClass = 'chong'; ckwbClass = 'chong'; }
+      else if (k <= 1.08) { ckwb = '稳'; kClass = 'wen'; ckwbClass = 'wen'; }
+      else { ckwb = '保'; kClass = 'bao'; ckwbClass = 'bao'; }
+    } else if (c.tier) {
+      // Use AI-assigned tier if k not available
+      ckwb = c.tier;
+      ckwbClass = c.tier === '冲' ? 'chong' : c.tier === '稳' ? 'wen' : 'bao';
+    }
+
+    // Parse notes: split by | to separate match_reason and risk_flag
+    const notesParts = (c.notes || '').split('|').map(s => s.trim()).filter(Boolean);
+    let notesHtml = '';
+    notesParts.forEach(part => {
+      if (part.startsWith('✅')) notesHtml += '<span style="color:#10b981;font-size:10px;">' + escapeHtml(part) + '</span><br>';
+      else if (part.startsWith('⚠️')) notesHtml += '<span style="color:#f59e0b;font-size:10px;">' + escapeHtml(part) + '</span><br>';
+      else if (part.startsWith('📎')) notesHtml += '<span style="color:var(--text-muted);font-size:9px;">' + escapeHtml(part) + '</span><br>';
+      else notesHtml += '<span style="font-size:10px;">' + escapeHtml(part) + '</span><br>';
+    });
+
+    html += '<tr>'
+      + '<td>' + (i+1) + '</td>'
+      + '<td><strong>' + escapeHtml(c.name) + '</strong></td>'
+      + '<td>' + escapeHtml(c.city) + '</td>'
+      + '<td>' + escapeHtml(c.tag) + '</td>'
+      + '<td>' + escapeHtml(c.rank24) + '</td>'
+      + '<td>' + escapeHtml(c.score24) + '</td>'
+      + '<td><span class="k-badge ' + kClass + '">k=' + kDisplay + '</span></td>'
+      + '<td><span class="k-badge ' + ckwbClass + '">' + ckwb + '</span></td>'
+      + '<td style="max-width:200px;">' + (notesHtml || '<span style="color:var(--text-muted);font-size:10px;">—</span>') + '</td>'
+      + '<td><button class="btn-danger-sm" onclick="deleteT4Candidate(' + i + ')">✕</button></td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function refreshCandidateEditor() {
+  // Find the candidate editor section and refresh it
+  const body = document.getElementById('t4ModalBody');
+  const sections = body.querySelectorAll('.search-section');
+  // Find the last section (current candidate list) and update it
+  const lastSection = sections[sections.length - 1];
+  if (lastSection) {
+    if (_t4Working.length > 0) {
+      lastSection.innerHTML = '<h3>📊 当前候选列表（' + _t4Working.length + ' 所）</h3>' + renderCandidateEditorInner();
+    } else {
+      lastSection.innerHTML = '<h3>📊 当前候选列表（0 所）</h3>'
+        + '<div style="text-align:center;padding:24px;color:var(--text-muted);">'
+        + '还没有添加任何院校。</div>';
+    }
+  }
+
+  // Also update summary if exists
+  const summaryDiv = body.querySelector('.candidate-summary');
+  if (summaryDiv) {
+    if (_t4Working.length > 0) {
+      const tierCounts = { '冲': 0, '稳': 0, '保': 0 };
+      _t4Working.forEach(c => { if (tierCounts[c.tier] !== undefined) tierCounts[c.tier]++; });
+      summaryDiv.innerHTML = '已录入 <strong>' + _t4Working.length + '</strong> 所院校 '
+        + (tierCounts['冲'] > 0 ? '<span class="tag tag-chong" style="margin:0 2px;">冲' + tierCounts['冲'] + '</span>' : '')
+        + (tierCounts['稳'] > 0 ? '<span class="tag tag-wen" style="margin:0 2px;">稳' + tierCounts['稳'] + '</span>' : '')
+        + (tierCounts['保'] > 0 ? '<span class="tag tag-bao" style="margin:0 2px;">保' + tierCounts['保'] + '</span>' : '')
+        + '<br>点击右下角 <strong>"✅ 生成候选草表"</strong> 将自动计算k值并分类冲稳保。<br>'
+        + '<span style="color:var(--text-muted);font-size:11px;">提示：至少录入 6 所以上才能做冲稳保配比。</span>';
+    } else {
+      summaryDiv.remove();
+    }
+  }
+}
+
+// ====== Finalize: Process T4 working list → appData.candidates ======
+function finalizeCandidates() {
+  if (_t4Working.length === 0) {
+    alert('请至少添加1所院校数据。');
+    return;
+  }
+
+  const userRank = parseInt(appData.rank || '1');
+
+  // Convert working list to standard candidate format
+  appData.candidates = _t4Working.map(c => {
+    const rank24 = parseInt(c.rank24) || 0;
+    const k = rank24 && userRank ? (rank24 / userRank) : 0;
+
+    let tag_ckwb = c.tier || '—';
+    if (k > 0) {
+      if (k < 0.95) tag_ckwb = '冲';
+      else if (k <= 1.08) tag_ckwb = '稳';
+      else tag_ckwb = '保';
+    }
+
+    const rankYear = getDataYear() + '：' + (c.rank24 ? parseInt(c.rank24).toLocaleString() + '位次' : '—')
+      + (c.score24 ? ' / ' + c.score24 + '分' : '');
+
+    return {
+      name: c.name,
+      code: '待核验[考试院]',
+      city: c.city,
+      tag: c.tag || '',
+      k: k > 0 ? k.toFixed(2) : '—',
+      tag_ckwb: tag_ckwb,
+      rankYear: rankYear,
+      scoreYear: c.score24 || '',
+      plan: c.plan || '待核验',
+      notes: c.notes || '',
+      _rankYear: c.rank24,
+      _scoreYear: c.score24
+    };
+  });
+
+  // Sort by k value ascending (冲在前)
+  appData.candidates.sort((a, b) => parseFloat(a.k) - parseFloat(b.k));
+
+  saveData(appData);
+  setStage(4, 1);
+  closeModal('t4Modal');
+
+  const total = appData.candidates.length;
+  let msg = '✅ 候选草表已生成。<br>';
+  msg += '共录入 <strong>' + total + '</strong> 所院校。<br><br>';
+
+  // Count categories
+  const groups = { '冲':[], '稳':[], '保':[] };
+  appData.candidates.forEach(c => { if (groups[c.tag_ckwb]) groups[c.tag_ckwb].push(c); });
+  msg += '<strong>📐 k值算法：k = R_school / R_user</strong>（R_user ≈ ' + userRank + '）<br>';
+  for (const [l, list] of Object.entries(groups)) {
+    if (list.length > 0) {
+      msg += '<span class="tag tag-' + (l==='冲'?'chong':l==='稳'?'wen':'bao') + '">' + l + '（' + list.length + '所）</span> ';
+    }
+  }
+
+  // 冲稳保配比检查（理想 3:4:3）
+  var chongN = groups['冲'].length, wenN = groups['稳'].length, baoN = groups['保'].length;
+  if (total >= 6) {
+    var idealChong = Math.round(total * 0.3), idealWen = Math.round(total * 0.4), idealBao = Math.round(total * 0.3);
+    var ratioIssues = [];
+    if (chongN === 0) ratioIssues.push('缺少<strong>冲</strong>档院校（建议' + idealChong + '所）');
+    else if (chongN < idealChong - 1) ratioIssues.push('<strong>冲</strong>档偏少（' + chongN + '所，建议' + idealChong + '所）');
+    if (wenN === 0) ratioIssues.push('缺少<strong>稳</strong>档院校（建议' + idealWen + '所）');
+    else if (wenN < idealWen - 1) ratioIssues.push('<strong>稳</strong>档偏少（' + wenN + '所，建议' + idealWen + '所）');
+    if (baoN === 0) ratioIssues.push('缺少<strong>保</strong>档院校（建议' + idealBao + '所）');
+    else if (baoN < idealBao - 1) ratioIssues.push('<strong>保</strong>档偏少（' + baoN + '所，建议' + idealBao + '所）');
+    if (ratioIssues.length > 0) {
+      msg += '<br><br><div style="padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid var(--warning);border-radius:8px;font-size:12px;">';
+      msg += '<strong>⚠️ 配比提醒</strong>（理想 3:4:3）：' + ratioIssues.join('；') + '<br>';
+      msg += '<span style="color:var(--text-muted)">建议返回补充对应档位院校，避免全冲滑档或全保浪费分数。</span>';
+      msg += '</div>';
+    }
+  }
+
+  addAIMessage(msg, [
+    {text:'📊 查看完整候选草表', primary:true},
+    {text:'📄 生成最终报告'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) openT3Modal();
+    else { setStage(5, 0); runStage5(0); }
+  };
+  window._messageHandler = (text) => {
+    if (text.includes('草表') || text.includes('查看')) openT3Modal();
+    else { setStage(5, 0); runStage5(0); }
+  };
+}
+
+// Keep showCandidateTable for backward compatibility (used by T3 modal)
+function showCandidateTable() {
+  clearQuickReplies();
+
+  const userRank = parseInt(appData.rank || '1');
+  const province = appData.province || '';
+  const authority = PROVINCE_AUTHORITY[province];
+
+  // Risk warnings
+  let riskWarn = '';
+  const t2Profile = {};
+  appData.t2Data.forEach(item => { if (item.prefilledValue) t2Profile[item.item] = item.prefilledValue; });
+
+  // Show k-value summary
+  let summary = '';
+  summary += '<strong>📐 k值算法：k = R_school / R_user</strong>（R_user ≈ ' + userRank + '）<br><br>';
+
+  const groups = { '冲':[], '稳':[], '保':[] };
+  appData.candidates.forEach(c => {
+    if (groups[c.tag_ckwb]) groups[c.tag_ckwb].push(c);
+  });
+
+  for (const [label, list] of Object.entries(groups)) {
+    if (list.length === 0) continue;
+    let tagClass = label === '冲' ? 'tag-chong' : label === '稳' ? 'tag-wen' : 'tag-bao';
+    summary += '<span class="tag ' + tagClass + '">' + label + '（' + list.length + '所）</span>';
+    list.forEach(c => {
+      summary += '<br>&nbsp;&nbsp;' + c.name + '（' + (c.city||'') + '）：k≈' + c.k;
+    });
+    summary += '<br><br>';
+  }
+
+  const declC = '<div class="declaration-block">'
+    + '<strong>🚨 声明C — 志愿推荐通用免责</strong><br>'
+    + '本候选草表由AI辅助生成，所列数据来自用户查询录入，<br>'
+    + '<strong>仅供参考，不构成任何填报、录取或决策承诺</strong>。<br>'
+    + '最终填报请以' + (authority ? '<a class="msg-link" href="' + authority.url + '" target="_blank">' + authority.name + '</a>' : '省考试院')
+    + '官方数据为准。</div>';
+
+  const generateTime = new Date().toLocaleDateString('zh-CN');
+
+  let fullMsg = '根据你的数据生成的候选草表如下：<br><br>';
+  if (riskWarn) fullMsg += riskWarn + '<br>';
+  fullMsg += summary;
+  fullMsg += '<br>' + declC + '<br>';
+  fullMsg += '🔗 数据来源：<a class="msg-link" href="https://gaokao.chsi.com.cn/" target="_blank">阳光高考</a> · '
+    + (authority ? '<a class="msg-link" href="' + authority.url + '" target="_blank">' + authority.name + '</a> · ' : '')
+    + '<a class="msg-link" href="https://colleges.chat/" target="_blank">colleges.chat</a>';
+
+  addAIMessage(fullMsg, [
+    {text:'📊 查看完整候选草表', primary:true},
+    {text:'📄 生成最终报告'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) openT3Modal();
+    else { setStage(5, 0); runStage5(0); }
+  };
+  window._messageHandler = (text) => {
+    if (text.includes('草表') || text.includes('查看')) openT3Modal();
+    else { setStage(5, 0); runStage5(0); }
+  };
+}
+
+// ---- Stage 5: 最终报告 ----
+function runStage5(step) {
+  setStage(5, 0);
+  clearQuickReplies();
+
+  const t1Considered = appData.t1Data.filter(r => r.consider === '是');
+  const province = appData.province || '';
+  const authority = PROVINCE_AUTHORITY[province];
+  const generateTime = new Date().toLocaleString('zh-CN');
+  const dataCutoff = getDataYear() + '年录取数据（辅以' + (getDataYear()-1) + '/' + (getDataYear()-2) + '年）';
+
+  let report = '<strong>📄 高考志愿填报最终报告</strong><br><br>';
+
+  // Declaration
+  report += `<div class="declaration-block">`
+    + `<strong>🚨 法务定稿免责</strong><br>`
+    + `本报告内容均由 AI 辅助生成，仅供参考，不构成任何填报、录取或决策的承诺与建议。<br>`
+    + `最终决定请您和家人结合官方信息综合判断。`
+    + `</div><br>`;
+
+  // A2 row metadata
+  report += `<div class="msg-content-block">`
+    + `📅 <strong>生成时间：</strong>${generateTime}<br>`
+    + `📊 <strong>数据截止日期：</strong>${dataCutoff}<br>`
+    + `📍 <strong>适用省份：</strong>${province}` + (authority ? `（<a class="msg-link" href="${authority.url}" target="_blank">${authority.name}</a>）` : '') + `<br>`
+    + `📐 <strong>k值定义：</strong>冲 k∈[0.80, 0.95) | 稳 k∈[0.95, 1.08] | 保 k>1.08（太冲 k<0.80 已排除）`
+    + `</div><br>`;
+
+  // Basic info
+  report += '<strong>一、基本信息</strong><br>';
+  report += `省份：${appData.province || '未填'}<br>`;
+  report += `选科：${appData.examType || '未填'}<br>`;
+  report += `总分：${appData.totalScore || '未填'}分<br>`;
+  report += `位次：${appData.rank || '未填'}<br>`;
+  report += `亏分倾向：${appData.deficitTolerance || '适中'}<br>`;
+  report += `身体/政策限制：${appData.restrictions || '无'}<br><br>`;
+
+  // Major overview
+  report += '<strong>二、专业概览（T1选出）</strong><br>';
+  if (t1Considered.length > 0) {
+    t1Considered.forEach(r => {
+      report += `• <strong>${r.major}</strong>：${r.intro}<br>`;
+      if (r.reason) report += `&nbsp;&nbsp;选择原因：${r.reason}<br>`;
+      if (r.keywords) report += `&nbsp;&nbsp;<span style="color:var(--warning)">注意事项：${r.keywords}</span><br>`;
+    });
+  } else {
+    report += '（未在T1表选择专业类）<br>';
+  }
+  report += '<br>';
+
+  // Personal profile (T2 summary)
+  report += '<strong>三、个人画像（T2摘要）</strong><br>';
+  const t2Summary = {};
+  appData.t2Data.forEach(item => {
+    if (item.prefilledValue && item.prefilledValue.trim() && item.group !== '参考评测' && item.group !== '分数情况') {
+      report += `• <strong>${item.item}</strong>：${item.prefilledValue}<br>`;
+    }
+  });
+  report += '<br>';
+
+  // Candidate table summary
+  report += '<strong>四、候选志愿草表（冲稳保）</strong><br>';
+  if (appData.candidates.length > 0) {
+    const groups = { '冲':[], '稳':[], '保':[] };
+    appData.candidates.forEach(c => { if (groups[c.tag_ckwb]) groups[c.tag_ckwb].push(c); });
+
+    for (const [label, list] of Object.entries(groups)) {
+      if (list.length === 0) continue;
+      report += `<strong>${label}（${list.length}所）：</strong><br>`;
+      list.forEach(c => {
+        report += `&nbsp;&nbsp;${c.name} — ${c.city} | ${c.tag} | k≈${c.k} | ${c.rankYear}<br>`;
+      });
+    }
+  } else {
+    report += '（尚未生成，请先查看示例候选草表或查询数据）<br>';
+  }
+  report += '<br>';
+
+  // Risk checklist
+  report += '<strong>五、风险提醒清单</strong><br>';
+  report += '<div class="msg-content-block warning">';
+  report += '⚠️ <strong>服从调剂：</strong>建议全部勾选"服从调剂"，否则有退档风险<br>';
+  report += '⚠️ <strong>单科限制：</strong>部分专业有单科成绩要求（如英语≥120），请逐一核对<br>';
+  report += '⚠️ <strong>体检限制：</strong>如有色盲/色弱/乙肝等，医学类、化学类可能受限<br>';
+  report += '⚠️ <strong>提前批：</strong>考虑是否填报提前批（军校/公安/公费师范等），注意时间节点<br>';
+  report += '⚠️ <strong>填报时间：</strong>各省批次填报时间段不同，请在省考试院确认截止时间<br>';
+  report += '⚠️ <strong>代码核验：</strong>院校代码和专业代码务必以官方系统为准，勿用历史代码<br>';
+  report += '⚠️ <strong>大小年波动：</strong>部分院校录取位次波动较大（±5000名），建议参考3年数据';
+  report += '</div><br>';
+
+  // Decision summary
+  report += '<strong>六、决策小结</strong><br>';
+  report += '基于T1筛选和T2画像，你的匹配方向是：<br>';
+  const matched = t1Considered.map(r => r.major.replace(/^\d+\s*/, '')).join('、');
+  report += `<strong>${matched || '待定'}</strong><br>`;
+  if (appData.cityPrefs) report += `偏好城市：${appData.cityPrefs}<br>`;
+  report += `冲稳保配比建议：<strong>3:4:3</strong>（冲30% + 稳40% + 保30%）<br>`;
+  if (appData.deficitTolerance) report += `亏分策略：${appData.deficitTolerance}<br>`;
+  report += '<br>';
+
+  // Source declaration
+  report += '<strong>七、来源与时效声明</strong><br>';
+  report += '<div class="msg-content-block">';
+  report += '• 一分一段表 · 采集年份：' + getDataYear() + ' · 采集于 ' + new Date().toISOString().split('T')[0] + '<br>';
+  report += '• 院校名单来源：[阳光高考院校信息库](https://gaokao.chsi.com.cn/) · ' + getDataYear() + '年数据<br>';
+  report += '• 录取位次/分数：各校数据来自[掌上高考](https://www.gaokao.cn/)、[高考100](https://www.gk100.com/) · ' + getDataYear() + '年数据<br>';
+  if (authority) report += `• 招生计划：${authority.name} · 采集于${new Date().toISOString().split('T')[0]}<br>`;
+  report += '• 选科要求 · 来源年份：' + getDataYear() + ' · 采集于各省教育考试院<br>';
+  report += '• 专业信息：[阳光高考专业知识库](https://gaokao.chsi.com.cn/) · ' + getDataYear() + '年数据<br>';
+  report += '• 主观参考：[colleges.chat](https://colleges.chat/) · 院校口碑与就读体验<br>';
+  report += '</div><br>';
+
+  // Final legal
+  report += `<div class="declaration-block">`
+    + `<strong>本报告内容均由 AI 辅助生成，仅供参考，不构成任何填报、录取或决策的承诺与建议。`
+    + `最终决定请您和家人结合官方信息综合判断。</strong>`
+    + `</div>`;
+
+  addAIMessage(report, [
+    {text:'📊 查看完整候选草表', primary:true},
+    {text:'🔄 重新来一次'},
+    {text:'📥 导出CSV'}
+  ]);
+  window._quickReplyHandler = (idx) => {
+    if (idx === 0) openT3Modal();
+    else if (idx === 1) resetAll();
+    else exportCSV();
+  };
+
+  appData.reportGenerated = true;
+  saveData(appData);
+}
+
+// ============================================================================
+// SECTION 7: MODAL HANDLERS
+// ============================================================================
+
+function openT1Modal() {
+  const body = document.getElementById('t1ModalBody');
+  const cats = {}; // Group by 门类
+  appData.t1Data.forEach((r, i) => {
+    const catName = r.cat.replace(/^\d+\s*/, '');
+    if (!cats[catName]) cats[catName] = [];
+    cats[catName].push({...r, idx:i});
+  });
+
+  let html = '<div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+  html += '<span style="font-size:11px;color:var(--text-muted);margin-right:4px;">批量：</span>';
+  html += '<button class="btn btn-sm" onclick="batchSetT1(\'是\')" style="font-size:11px;padding:3px 10px;">全选「是」</button>';
+  html += '<button class="btn btn-sm" onclick="batchSetT1(\'\')" style="font-size:11px;padding:3px 10px;">全部清除</button>';
+  html += '<span style="font-size:11px;color:var(--text-muted);margin-left:8px;">| 点击门类标题可折叠</span>';
+  html += '</div>';
+  html += '<input type="text" class="t1-search-box" id="t1SearchBox" placeholder="🔍 搜索专业类名称或介绍（如：计算机、医学、法学）…" oninput="filterT1Rows(this.value)">';
+
+  for (const [catName, rows] of Object.entries(cats)) {
+    const yesCount = rows.filter(r => r.consider === '是').length;
+    const badge = yesCount > 0 ? ` <span style="background:var(--accent);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;">${yesCount}是</span>` : '';
+    html += `<div class="t1-cat-header" onclick="toggleT1Cat(this)" style="cursor:pointer;padding:8px 12px;margin:6px 0 0;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;gap:8px;user-select:none;">
+      <span class="cat-arrow" style="transition:transform 0.2s;font-size:10px;">▼</span>
+      <strong style="font-size:13px;">${catName}</strong>${badge}
+      <span style="flex:1"></span>
+      <button class="btn btn-sm" onclick="event.stopPropagation();catSetT1('${catName.replace(/'/g,"\\'")}','是')" style="font-size:10px;padding:2px 8px;">全选</button>
+      <button class="btn btn-sm" onclick="event.stopPropagation();catSetT1('${catName.replace(/'/g,"\\'")}','')" style="font-size:10px;padding:2px 8px;">清除</button>
+    </div>`;
+
+    html += `<div class="t1-cat-body"><table class="modal-table"><thead><tr>
+      <th style="width:150px">专业类</th>
+      <th>一句话介绍</th>
+      <th style="width:80px">是否考虑</th>
+      <th style="width:180px">原因（可选）</th>
+    </tr></thead><tbody>`;
+
+    rows.forEach(r => {
+      const keywordNote = r.keywords ? ` ⚠️${r.keywords}` : '';
+      const selClass = r.consider === '是' ? 't1-btn-yes' : r.consider === '否' ? 't1-btn-no' : r.consider === '待定' ? 't1-btn-maybe' : '';
+      html += `<tr>
+        <td><strong>${r.major}</strong></td>
+        <td style="font-size:11px;color:var(--text-secondary)">${r.intro}${keywordNote}</td>
+        <td style="white-space:nowrap;">
+          <button class="t1-toggle ${selClass}" id="t1t_${r.idx}" onclick="cycleT1(${r.idx})">${r.consider || '—'}</button>
+        </td>
+        <td><input type="text" class="t1-reason" value="${escapeHtml(r.reason||'')}"
+          onchange="updateT1Field(${r.idx},'reason',this.value)"
+          placeholder="简短写（可选）" style="width:100%;font-size:12px"></td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div></div>';
+  }
+
+  body.innerHTML = html;
+  document.getElementById('t1Modal').style.display = 'flex';
+}
+
+// T1 batch operations
+function batchSetT1(val) {
+  appData.t1Data.forEach(r => { r.consider = val; });
+  closeModal('t1Modal'); // close and reopen to refresh UI
+  setTimeout(() => openT1Modal(), 50);
+}
+function catSetT1(catName, val) {
+  appData.t1Data.forEach(r => {
+    if (r.cat.replace(/^\d+\s*/, '') === catName) r.consider = val;
+  });
+  closeModal('t1Modal');
+  setTimeout(() => openT1Modal(), 50);
+}
+function cycleT1(idx) {
+  const cycle = { '':'是', '是':'否', '否':'待定', '待定':'' };
+  appData.t1Data[idx].consider = cycle[appData.t1Data[idx].consider] || '';
+  // Just update button inline without full re-render
+  const btn = document.getElementById('t1t_'+idx);
+  const v = appData.t1Data[idx].consider;
+  if (btn) {
+    btn.textContent = v || '—';
+    btn.className = 't1-toggle ' + (v==='是'?'t1-btn-yes':v==='否'?'t1-btn-no':v==='待定'?'t1-btn-maybe':'');
+  }
+  // Update the category header badge
+  updateT1CatBadges();
+}
+function toggleT1Cat(el) {
+  const body = el.nextElementSibling;
+  const arrow = el.querySelector('.cat-arrow');
+  if (body) {
+    body.style.display = body.style.display === 'none' ? '' : 'none';
+    if (arrow) arrow.style.transform = body.style.display === 'none' ? 'rotate(-90deg)' : '';
+  }
+}
+function updateT1CatBadges() {
+  // Simple approach: just update badges array for next open
+  // Inline badge updates are handled via the close/reopen cycle
+}
+
+function updateT1Field(idx, field, value) {
+  appData.t1Data[idx][field] = value;
+  // Don't save on every keystroke — save only on modal close
+}
+
+function filterT1Rows(query) {
+  query = (query || '').trim().toLowerCase();
+  const body = document.getElementById('t1ModalBody');
+  const catHeaders = body.querySelectorAll('.t1-cat-header');
+  const catBodies = body.querySelectorAll('.t1-cat-body');
+  catHeaders.forEach((header, i) => {
+    const catBody = catBodies[i];
+    if (!catBody) return;
+    const rows = catBody.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const match = !query || text.includes(query);
+      row.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+    // Hide category header if no matching rows
+    header.style.display = visibleCount > 0 ? '' : 'none';
+    if (query && visibleCount > 0) {
+      // Auto-expand when searching
+      catBody.style.display = '';
+      const arrow = header.querySelector('.cat-arrow');
+      if (arrow) arrow.style.transform = '';
+    }
+  });
+}
+
+function saveT1AndClose() {
+  saveData(appData);
+  closeModal('t1Modal');
+  const yesCount = appData.t1Data.filter(r=>r.consider==='是').length;
+  addAIMessage('📋 T1表已保存。标记了 <strong>' + yesCount + '</strong> 个「是」的专业类。');
+
+  // Always advance to step 1 and run validation
+  if (appData.stage === 2) {
+    setStage(2, 1);
+    // Give a moment for the "已保存" message to appear, then validate
+    setTimeout(() => runStage2_validation(), 1000);
+  }
+}
+
+function prefillT2ScoreGroup() {
+  // Auto-fill "分数情况" group from Stage 1 basic data
+  const scoreMap = {
+    '高考总分': appData.totalScore ? appData.totalScore + '分' : '',
+    '省排名（位次）': appData.rank ? appData.rank + '位次' : '',
+    '所在省份': appData.province || '',
+    '选科组合': appData.examType || '',
+    '各科成绩': appData.subjectScores || '',
+    '亏分情况': appData.deficitTolerance || ''
+  };
+  appData.t2Data.forEach(item => {
+    if (item.group === '分数情况' && scoreMap.hasOwnProperty(item.item)) {
+      item.prefilledValue = scoreMap[item.item];
+    }
+  });
+}
+
+function openT2Modal() {
+  // Prefill score group before rendering
+  prefillT2ScoreGroup();
+  const body = document.getElementById('t2ModalBody');
+  const groups = {};
+
+  appData.t2Data.forEach((item, i) => {
+    if (!groups[item.group]) groups[item.group] = [];
+    groups[item.group].push({...item, idx:i});
+  });
+
+  let html = '';
+  for (const [group, items] of Object.entries(groups)) {
+    const isReference = group === '参考评测' || group === '参考评测（MBTI/霍兰德）';
+    const filledCount = items.filter(i => i.prefilledValue && i.prefilledValue.trim()).length;
+    html += `<div class="t2-group-header" onclick="toggleT2Group(this)" style="margin:12px 0 8px;padding:8px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border);">`
+      + `<span class="collapse-arrow">▼</span>`
+      + `<strong style="color:var(--accent);font-size:14px;">${group}</strong>`
+      + `<span style="font-size:11px;color:var(--text-muted);margin-left:8px;">${filledCount}/${items.length}项已填${isReference ? '（可不填）' : ''}</span>`
+      + `</div>`;
+    html += `<div class="t2-group-body">`;
+    html += '<table class="modal-table"><thead><tr>'
+      + '<th style="width:130px">条件项</th>'
+      + '<th style="width:100px">影响</th>'
+      + '<th style="width:130px">填写示例</th>'
+      + '<th style="width:230px">填写区</th>'
+      + '</tr></thead><tbody>';
+
+    items.forEach(item => {
+      html += `<tr>
+        <td><strong>${item.item}</strong></td>
+        <td style="font-size:11px;color:var(--text-muted)">${item.impact || item.desc}</td>
+        <td style="font-size:11px;color:var(--text-secondary)">${item.example}</td>
+        <td><input type="text" value="${escapeHtml(item.prefilledValue||'')}"
+          data-idx="${item.idx}"
+          onchange="updateT2Field(${item.idx},this.value)"
+          placeholder="${isReference ? '可选' : '请填写'}"
+          style="width:100%"></td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+  }
+
+  body.innerHTML = html;
+  document.getElementById('t2Modal').style.display = 'flex';
+}
+
+function toggleT2Group(headerEl) {
+  const body = headerEl.nextElementSibling;
+  const arrow = headerEl.querySelector('.collapse-arrow');
+  if (!body) return;
+  const isCollapsed = body.classList.contains('collapsed');
+  if (isCollapsed) {
+    body.classList.remove('collapsed');
+    body.style.maxHeight = '';
+    if (arrow) { arrow.style.transform = ''; headerEl.classList.remove('collapsed'); }
+  } else {
+    body.classList.add('collapsed');
+    body.style.maxHeight = '0';
+    if (arrow) { arrow.style.transform = 'rotate(-90deg)'; headerEl.classList.add('collapsed'); }
+  }
+}
+
+function updateT2Field(idx, value) {
+  appData.t2Data[idx].prefilledValue = value;
+  // Don't save on every keystroke
+}
+
+function saveT2AndClose() {
+  // Safety: read all inputs from DOM before saving (in case onchange didn't fire)
+  const inputs = document.querySelectorAll('#t2ModalBody input[type="text"]');
+  inputs.forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    if (!isNaN(idx) && idx >= 0 && idx < appData.t2Data.length) {
+      appData.t2Data[idx].prefilledValue = inp.value;
+    }
+  });
+  saveData(appData);
+  closeModal('t2Modal');
+  // Count filled groups
+  const gs = {};
+  appData.t2Data.forEach(item => {
+    if (!gs[item.group]) gs[item.group] = 0;
+    if (item.prefilledValue && item.prefilledValue.trim()) gs[item.group]++;
+  });
+  const mainFilled = ['地域倾向','经济能力','个人偏好','未来规划'].filter(g => gs[g] > 0).length;
+  addAIMessage('📋 T2表已保存。' + mainFilled + '/4个主要组已有内容。分数情况已自动填充。');
+
+  // Always advance to step 1 and run validation
+  if (appData.stage === 2) {
+    setStage(2, 1);
+    setTimeout(() => runStage2_validation(), 1000);
+  }
+}
+
+// ---- T3 Modal (Candidate Table) ----
+function openT3Modal() {
+  const body = document.getElementById('t3ModalBody');
+  document.getElementById('t3ModalTitle').textContent = '📊 T3 候选志愿草表（13列·冲稳保）';
+
+  const generateTime = new Date().toLocaleString('zh-CN');
+  const dataCutoff = getDataYear() + '年录取数据（辅以' + (getDataYear()-1) + '/' + (getDataYear()-2) + '年）';
+  const province = appData.province || '';
+  const authority = PROVINCE_AUTHORITY[province];
+  const userRank = parseInt(appData.rank || '0');
+  const t1Considered2 = appData.t1Data.filter(r => r.consider === '是');
+  const userMajors = t1Considered2.length > 0
+    ? t1Considered2.map(r => r.major.replace(/^\d+\s*/, '')).join('、')
+    : '待定';
+
+  // Build full 13-column table per SKILL.md spec
+  let html = '';
+
+  // Declaration D row (rows A1-A2 in skill spec)
+  html += `<div style="margin-bottom:16px;padding:12px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:8px;font-size:12px;line-height:1.7;">`;
+  html += `<strong>🚨 声明D（表格第1-2行）</strong><br>`;
+  html += `<strong>Row A1（声明D合并行）：</strong>⚠️ 本表由AI辅助生成，所列院校代码、专业组代码、专业代码、招生计划数、近年录取位次/分数、选科要求等字段均需在填报前于`
+    + (authority ? `<a href="${authority.url}" target="_blank" style="color:#3b82f6">${authority.name}</a>` : '各省教育考试院')
+    + `逐一核实。最终填报以官方志愿填报系统为准。<br>`;
+  html += `<strong>Row A2（元信息行）：</strong>📅 生成时间：${generateTime} | 📊 数据截至：${dataCutoff} | 📍 适用省份：${province}`
+    + (authority ? ` | 🔗 <a href="${authority.url}" target="_blank" style="color:#3b82f6">${authority.name}</a>` : '')
+    + ' | 📐 k = R_school / R_user（冲 0.80~0.95 | 稳 0.95~1.08 | 保 >1.08）';
+  html += `</div>`;
+
+  // K-value explanation block
+  html += `<div style="margin-bottom:12px;padding:12px 16px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.12);border-radius:8px;font-size:12px;line-height:1.7;">`;
+  html += `<strong style="color:var(--accent);">📐 K值是什么？为什么这么算？</strong><br>`;
+  html += `<strong>公式：</strong>k = 院校录取最低位次(R_school) ÷ 你的位次(R_user)<br>`;
+  html += `<strong>原理：</strong>位次数字越小 = 学校越好。用学校位次除以你的位次，就能直观衡量"你够不够得着"：<br>`;
+  html += `&nbsp;&nbsp;• <span class="tag tag-chong">冲</span> k &lt; 0.95 — 学校位次比你高 5%以上，有希望但风险大，博一博<br>`;
+  html += `&nbsp;&nbsp;• <span class="tag tag-wen">稳</span> 0.95 ≤ k ≤ 1.08 — 学校位次和你接近，录取概率较大，主力填报<br>`;
+  html += `&nbsp;&nbsp;• <span class="tag tag-bao">保</span> k &gt; 1.08 — 学校位次比你低 8%以上，安全兜底，确保不滑档<br>`;
+  html += `<strong>指导意义：</strong>k值帮你快速判断每所院校的录取难度层次，避免全填"冲"导致滑档、或全填"保"浪费分数。建议按 3:4:3（冲:稳:保）配比填报，兼顾上限和下限。`;
+  html += `</div>`;
+
+  // Start table
+  html += '<div class="inline-table-wrapper"><table class="modal-table" id="t3CandidateTable">';
+
+  // Header row (13 columns) — sortable headers
+  html += '<thead><tr>';
+  html += '<th class="sortable-th" onclick="sortTable(\'t3CandidateTable\',0,\'num\')">序号 <span class="sort-arrow">↕</span></th>';
+  html += '<th class="sortable-th" onclick="sortTable(\'t3CandidateTable\',1,\'text\')">冲·稳·保 <span class="sort-arrow">↕</span></th>';
+  html += '<th class="sortable-th" onclick="sortTable(\'t3CandidateTable\',2,\'text\')">院校名称 <span class="sort-arrow">↕</span></th>';
+  html += '<th>院校代码<br>(待核验)</th>';
+  html += '<th>专业组·专业</th><th>专业组代码·<br>专业代码(待核验)</th>';
+  html += '<th class="sortable-th" onclick="sortTable(\'t3CandidateTable\',6,\'text\')">城市 <span class="sort-arrow">↕</span></th>';
+  html += '<th class="sortable-th" onclick="sortTable(\'t3CandidateTable\',7,\'text\')">院校标签 <span class="sort-arrow">↕</span></th>';
+  html += '<th>选科匹配</th><th>近年录取位次·分数<br>(标年份)</th><th>招生计划数</th><th>建议服从调剂</th><th>匹配说明·备注</th>';
+  html += '</tr></thead><tbody>';
+
+  if (appData.candidates.length === 0) {
+    html += '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-muted)">'
+      + '暂无候选数据。请先在阶段4生成候选草表。<br>或点击"载入示例数据"查看模板效果。</td></tr>';
+  } else {
+    appData.candidates.forEach((c, i) => {
+      let tagClass = '';
+      if (c.tag_ckwb === '冲') tagClass = 'tag-chong';
+      else if (c.tag_ckwb === '稳') tagClass = 'tag-wen';
+      else if (c.tag_ckwb === '保') tagClass = 'tag-bao';
+      else if (c.tag_ckwb === '太冲') tagClass = 'tag-taichong';
+
+      html += '<tr>';
+      html += `<td>${i+1}</td>`;
+      html += `<td><span class="tag ${tagClass}">${c.tag_ckwb}</span><br><small>k≈${c.k}</small></td>`;
+      html += `<td><strong>${c.name}</strong></td>`;
+      html += `<td style="color:var(--warning);font-size:11px">${escapeHtml(c.code||'待核验[考试院]')}</td>`;
+      html += `<td>${escapeHtml(userMajors)}</td>`;
+      html += `<td style="color:var(--warning);font-size:11px">待核验[考试院]</td>`;
+      html += `<td>${escapeHtml(c.city||'')}</td>`;
+      html += `<td>${escapeHtml(c.tag||'')}</td>`;
+      html += `<td>${appData.examType || '待确认'}</td>`;
+      html += `<td>${escapeHtml(c.rankYear||'')}</td>`;
+      html += `<td>${escapeHtml(c.plan||'待核验')}</td>`;
+      // 服从调剂：根据k值和冲稳保分类上下文感知
+      var adjustAdvice = '';
+      var kVal = parseFloat(c.k) || 0;
+      if (c.tag_ckwb === '冲' || c.tag_ckwb === '太冲') {
+        adjustAdvice = '<span style="color:var(--danger)">🔴 强烈建议服从</span><br><small style="color:var(--text-muted)">冲档风险大，服从可避免退档</small>';
+      } else if (c.tag_ckwb === '稳') {
+        adjustAdvice = '<span style="color:var(--warning)">🟡 建议服从</span><br><small style="color:var(--text-muted)">稳档分数接近，服从保底</small>';
+      } else if (c.tag_ckwb === '保') {
+        if (kVal > 1.3) {
+          adjustAdvice = '<span style="color:var(--text-secondary)">⚪ 可选服从</span><br><small style="color:var(--text-muted)">保档分差大，视专业意愿定</small>';
+        } else {
+          adjustAdvice = '<span style="color:var(--success)">🟢 建议服从</span><br><small style="color:var(--text-muted)">保档稳妥，服从无风险</small>';
+        }
+      } else {
+        adjustAdvice = '<span style="color:var(--text-muted)">待评估</span>';
+      }
+      html += `<td style="font-size:11px">${adjustAdvice}</td>`;
+      html += `<td style="font-size:11px">${escapeHtml(c.notes||'')}</td>`;
+      html += '</tr>';
+    });
+  }
+
+  html += '</tbody></table></div></div>';
+
+  // Source & timeline declaration
+  html += `<div style="margin-top:20px;padding:16px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:8px;">`;
+  html += `<h3 style="font-size:14px;margin-bottom:12px;color:var(--accent);">📎 来源与时效声明（逐条全量列出）</h3>`;
+  html += `<div style="font-size:12px;line-height:1.8;color:var(--text-secondary);">`;
+
+  // One-point-one-segment table
+  html += `<strong>一分一段表：</strong><br>`;
+  html += `· ${userRank}名位次估算 · 采集年份：${getDataYear()} · 采集于 ${new Date().toISOString().split('T')[0]}`
+    + (authority ? ` · 来源：[${authority.name}](${authority.url})` : '') + '<br><br>';
+
+  html += `<strong>院校名单来源：</strong><br>`;
+  html += '· [阳光高考院校信息库](https://gaokao.chsi.com.cn/) · 采集年份：' + getDataYear() + ' · 采集于 ' + new Date().toISOString().split('T')[0] + '<br>';
+  html += '· [掌上高考](https://www.gaokao.cn/) · 采集年份：' + getDataYear() + ' · 采集于 ' + new Date().toISOString().split('T')[0] + '<br>';
+  html += '· [高考100](https://www.gk100.com/) · 采集年份：' + getDataYear() + ' · 采集于 ' + new Date().toISOString().split('T')[0] + '<br><br>';
+
+  html += `<strong>录取位次/分数（逐校列出）：</strong><br>`;
+  appData.candidates.forEach(c => {
+    html += `· ${c.name}录取位次/分数：采集年份：${getDataYear()} · 采集于${new Date().toISOString().split('T')[0]} · 来源：掌上高考/高考100<br>`;
+  });
+  html += '<br>';
+
+  html += `<strong>招生计划：</strong><br>`;
+  html += '· 待核验 · 采集于 ' + new Date().toISOString().split('T')[0]
+    + (authority ? ` · 来源：[${authority.name}](${authority.url})` : '') + '<br><br>';
+
+  html += `<strong>选科要求：</strong><br>`;
+  html += `· ${appData.examType || '待确认'} · 采集年份：${getDataYear()} · 来源：${authority ? authority.name : '省考试院'}<br><br>`;
+
+  html += `<strong>专业信息：</strong><br>`;
+  html += '· [阳光高考专业知识库](https://gaokao.chsi.com.cn/) · 采集年份：' + getDataYear() + '<br><br>';
+
+  html += `<strong>主观参考：</strong><br>`;
+  html += '· [colleges.chat](https://colleges.chat/) · 院校口碑与就读体验<br><br>';
+
+  html += `<strong>志愿填报规则：</strong><br>`;
+  html += '· ' + (authority ? `[${authority.name}](${authority.url})` : '省考试院') + '志愿填报指南 · 采集于 ' + new Date().toISOString().split('T')[0] + '<br>';
+
+  html += `</div>`;
+
+  // Final legal
+  html += `<div style="margin-top:12px;padding:12px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;font-size:12px;color:var(--text-secondary);">`;
+  html += `<strong>⚠️ 法务定稿：</strong>本报告内容均由 AI 辅助生成，仅供参考，不构成任何填报、录取或决策的承诺与建议。最终决定请您和家人结合官方信息综合判断。`;
+  html += `</div>`;
+
+  html += `</div>`; // Close source block
+
+  body.innerHTML = html;
+  document.getElementById('t3Modal').style.display = 'flex';
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// ============================================================================
+// SECTION 8: EXPORT & UTILITIES
+// ============================================================================
+
+// 服从调剂建议（纯文本版，用于CSV导出）
+function getAdjustAdvice(tag, kVal) {
+  if (tag === '冲' || tag === '太冲') return '强烈建议服从（冲档风险大，服从可避免退档）';
+  if (tag === '稳') return '建议服从（稳档分数接近，服从保底）';
+  if (tag === '保') return kVal > 1.3 ? '可选服从（保档分差大，视专业意愿定）' : '建议服从（保档稳妥，服从无风险）';
+  return '待评估';
+}
+
+function exportCSV() {
+  if (appData.candidates.length === 0) {
+    alert('暂无候选数据，请先生成候选草表。');
+    return;
+  }
+
+  const t1c = appData.t1Data.filter(r => r.consider === '是');
+  const userMajors = t1c.length > 0
+    ? t1c.map(r => r.major.replace(/^\d+\s*/, '')).join('、')
+    : '待定';
+
+  const province = appData.province || '';
+  const authority = PROVINCE_AUTHORITY[province];
+  const generateTime = new Date().toLocaleString('zh-CN');
+  const dataYear = getDataYear();
+  const dataCutoff = dataYear + '年录取数据（辅以' + (dataYear-1) + '/' + (dataYear-2) + '年）';
+  const userRank = appData.rank || '';
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // CSV escape helper
+  function esc(val) {
+    const s = String(val == null ? '' : val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  let lines = [];
+
+  // Title
+  lines.push(esc('📊 T3 候选志愿草表（13列·冲稳保）'));
+
+  // Row A1 - Declaration D
+  lines.push(esc('【声明D】本表由AI辅助生成，所列院校代码、专业组代码、专业代码、招生计划数、近年录取位次/分数、选科要求等字段均需在填报前于'
+    + (authority ? authority.name : '各省教育考试院') + '逐一核实。最终填报以官方志愿填报系统为准。'));
+
+  // Row A2 - Meta info
+  lines.push(esc('生成时间：' + generateTime + ' | 数据截至：' + dataCutoff + ' | 适用省份：' + province
+    + (authority ? ' | 来源：' + authority.name + '(' + authority.url + ')' : '')
+    + ' | k = R_school / R_user（冲<0.95 | 稳0.95~1.08 | 保>1.08）'));
+
+  // K-value explanation
+  lines.push(esc('【K值说明】k = 院校录取最低位次 ÷ 你的位次。位次数字越小=学校越好。'
+    + '冲(k<0.95)：学校比你高5%以上，有希望但风险大；'
+    + '稳(0.95≤k≤1.08)：学校和你接近，录取概率较大；'
+    + '保(k>1.08)：学校比你低8%以上，安全兜底。建议按3:4:3配比填报。'));
+  lines.push(esc('用户位次：' + userRank + ' | 选科：' + (appData.examType || '待确认') + ' | 目标专业：' + userMajors));
+
+  // Empty separator
+  lines.push('');
+
+  // 13-column header (matches T3 modal exactly)
+  lines.push([
+    esc('序号'), esc('冲·稳·保'), esc('院校名称'), esc('院校代码(待核验)'),
+    esc('专业组·专业'), esc('专业组代码·专业代码(待核验)'),
+    esc('城市'), esc('院校标签'), esc('选科匹配'),
+    esc('近年录取位次·分数(标年份)'), esc('招生计划数'),
+    esc('建议服从调剂'), esc('匹配说明·备注')
+  ].join(','));
+
+  // Candidate data rows
+  appData.candidates.forEach((c, i) => {
+    lines.push([
+      esc(i + 1),
+      esc(c.tag_ckwb + ' (k≈' + c.k + ')'),
+      esc(c.name),
+      esc(c.code || '待核验[考试院]'),
+      esc(userMajors),
+      esc('待核验[考试院]'),
+      esc(c.city || ''),
+      esc(c.tag || ''),
+      esc(appData.examType || '待确认'),
+      esc(c.rankYear || ''),
+      esc(c.plan || '待核验'),
+      esc(getAdjustAdvice(c.tag_ckwb, parseFloat(c.k) || 0)),
+      esc(c.notes || '')
+    ].join(','));
+  });
+
+  // Empty separator
+  lines.push('');
+
+  // Source & timeline declaration
+  lines.push(esc('📎 来源与时效声明'));
+  lines.push(esc('一分一段表：' + userRank + '名位次估算 | 采集年份：' + dataYear + ' | 采集于' + todayStr
+    + (authority ? ' | 来源：' + authority.name + '(' + authority.url + ')' : '')));
+  lines.push(esc('院校名单来源：阳光高考院校信息库(https://gaokao.chsi.com.cn/) | 采集年份：' + dataYear + ' | 采集于' + todayStr));
+  lines.push(esc('录取位次/分数：掌上高考(https://www.gaokao.cn/)、高考100(https://www.gk100.com/) | 采集年份：' + dataYear + ' | 采集于' + todayStr));
+  appData.candidates.forEach(c => {
+    lines.push(esc(c.name + '录取位次/分数 | 采集年份：' + dataYear + ' | 采集于' + todayStr + ' | 来源：掌上高考/高考100'));
+  });
+  lines.push(esc('招生计划：待核验 | 采集于' + todayStr
+    + (authority ? ' | 来源：' + authority.name + '(' + authority.url + ')' : '')));
+  lines.push(esc('选科要求：' + (appData.examType || '待确认') + ' | 采集年份：' + dataYear
+    + ' | 来源：' + (authority ? authority.name : '省考试院')));
+  lines.push(esc('专业信息：阳光高考专业知识库(https://gaokao.chsi.com.cn/) | 采集年份：' + dataYear));
+  lines.push(esc('主观参考：colleges.chat(https://colleges.chat/) | 院校口碑与就读体验'));
+  lines.push(esc('志愿填报规则：' + (authority ? authority.name + '(' + authority.url + ')' : '省考试院') + '志愿填报指南 | 采集于' + todayStr));
+
+  // Empty separator
+  lines.push('');
+
+  // Legal disclaimer
+  lines.push(esc('⚠️ 法务定稿：本报告内容均由 AI 辅助生成，仅供参考，不构成任何填报、录取或决策的承诺与建议。最终决定请您和家人结合官方信息综合判断。'));
+
+  const csv = lines.join('\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '高考志愿候选草表_T3_' + todayStr + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// SECTION 8.5: UX OPTIMIZATIONS — Toast / Network / Theme / Stage Nav
+// ============================================================================
+
+// ----- Toast Notification -----
+function showToast(msg, type) {
+  type = type || 'info';
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 3200);
+}
+
+// ----- Network Status -----
+(function initNetworkStatus() {
+  const bar = document.createElement('div');
+  bar.className = 'network-bar';
+  bar.id = 'networkBar';
+  document.body.prepend(bar);
+  function update() {
+    const b = document.getElementById('networkBar');
+    if (!b) return;
+    if (!navigator.onLine) {
+      b.className = 'network-bar offline show';
+      b.textContent = '⚠️ 网络已断开，部分功能不可用';
+    } else {
+      b.className = 'network-bar online show';
+      b.textContent = '✅ 网络已恢复';
+      setTimeout(() => b.classList.remove('show'), 2000);
+    }
+  }
+  window.addEventListener('offline', update);
+  window.addEventListener('online', update);
+})();
+
+// ----- Theme Toggle -----
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('gaokao-theme', 'dark');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('gaokao-theme', 'light');
+  }
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  btn.textContent = isLight ? '🌙' : '☀️';
+  btn.title = isLight ? '切换到深色模式' : '切换到浅色模式';
+}
+
+// ----- Stage Navigation -----
+function navigateToStage(stage) {
+  if (appData.stage === 4 && _t4Working.length > 0) saveData(appData);
+  setStage(stage, 0);
+  const f = { 0: ()=>runStage0(0), 1: ()=>runStage1(0), 2: ()=>runStage2(0), 3: ()=>runStage3(0), 4: ()=>runStage4(0), 5: ()=>runStage5(0) };
+  if (f[stage]) f[stage]();
+  showToast('已跳转到阶段 ' + (stage+1), 'info');
+}
+
+// ----- T1 Search Filter (handled by filterT1Rows above) -----
+
+// ----- T2 Group Collapse (handled by toggleT2Group(headerEl) above) -----
+
+// ----- Progress Bar -----
+function updateProgressBar() {
+  const fill = document.getElementById('progressBarFill');
+  const label = document.getElementById('progressBarLabel');
+  const markersEl = document.getElementById('progressBarMarkers');
+  const tooltipEl = document.getElementById('progressBarTooltip');
+  if (!fill) return;
+
+  const stageNames = ['声明','基本信息','专业解读','深入探索','数据录入','最终报告'];
+  const stageDescs = [
+    '阅读声明并确认开始',
+    '填写省份、分数、位次、选科',
+    'T1专业初筛 + T2个人画像 + AI解读',
+    'Top3专业确认 + 城市探索 + 偏好收集',
+    '搜索院校数据 + 手动补充 + 候选草表',
+    '生成最终填报报告'
+  ];
+  const curStage = Math.min(appData.stage, 5);
+  const completed = Math.min(curStage * 16 + (appData.stageStep||0) * 4, 96);
+  fill.style.width = completed + '%';
+  if (label) label.textContent = '当前：' + stageNames[curStage] + '（' + completed + '%）';
+
+  // Render markers (stage boundaries at ~16.67% intervals)
+  if (markersEl) {
+    let mh = '';
+    for (let i = 0; i < 6; i++) {
+      const left = (i / 5) * 100;
+      const cls = i < curStage ? 'done' : (i === curStage ? 'current' : '');
+      mh += '<div class="progress-bar-marker ' + cls + '" style="left:' + left + '%"></div>';
+    }
+    markersEl.innerHTML = mh;
+  }
+
+  // Render tooltip
+  if (tooltipEl) {
+    let th = '';
+    for (let i = 0; i < 6; i++) {
+      const icon = i < curStage ? '\u2713' : (i === curStage ? '\u25CF' : '\u25CB');
+      const cls = i < curStage ? 'done' : (i === curStage ? 'current' : '');
+      th += '<div class="progress-bar-tooltip-row ' + cls + '">'
+        + '<span class="tip-icon">' + icon + '</span>'
+        + '<span class="tip-stage">' + i + '</span>'
+        + '<span>' + stageNames[i] + '</span>'
+        + '<span style="opacity:0.6;margin-left:4px">\u2014 ' + stageDescs[i] + '</span>'
+        + '</div>';
+    }
+    tooltipEl.innerHTML = th;
+  }
+}
+
+// ----- Dynamic Placeholder -----
+function updateInputPlaceholder() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const ph = { 0:'输入省份名称，或点击上方按钮…', 1:'输入位次或分数…', 2:'有问题尽管问…', 3:'告诉我你的想法…', 4:'在搜索中心操作，或在这里问我…', 5:'查看报告，或在这里问我…' };
+  input.placeholder = ph[appData.stage] || '输入你的想法…';
+}
+
+// ----- Table Sort -----
+let _sortState = {};
+function sortTable(tableId, colIdx, dataType) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.rows);
+  const asc = _sortState[tableId+colIdx] = !_sortState[tableId+colIdx];
+  rows.sort((a,b) => {
+    let va = a.cells[colIdx]?.textContent.trim()||'';
+    let vb = b.cells[colIdx]?.textContent.trim()||'';
+    if (dataType==='num'||dataType==='k') {
+      va = parseFloat(va.match(/[d.]+/)?.[0])||0;
+      vb = parseFloat(vb.match(/[d.]+/)?.[0])||0;
+    }
+    return asc ? (va>vb?1:-1) : (va<vb?1:-1);
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+  tbody.closest('table').querySelectorAll('.sort-arrow').forEach(a=>a.textContent='↕');
+  const th = tbody.closest('table').querySelectorAll('th')[colIdx];
+  if (th) { const ar = th.querySelector('.sort-arrow')||document.createElement('span'); ar.className='sort-arrow'; ar.textContent=asc?'↑':'↓'; if(!th.querySelector('.sort-arrow')) th.appendChild(ar); }
+}
+
+
+function resetAll() {
+  try {
+    // 二次确认
+    if (!confirm('确定要清除所有数据重新开始吗？此操作不可恢复。')) return;
+
+    // 1. 清除持久化数据
+    localStorage.removeItem(STORAGE_KEY);
+
+    // 2. 重置全局状态
+    appData = getDefaultData();
+    saveData(appData); // 立即持久化干净的默认状态
+    _t4Working = [];
+    _profileCache = null;
+    _smartSearchActive = false;
+    window._quickReplyHandler = null;
+    window._messageHandler = null;
+
+    // 3. 清除 UI
+    chatContainer.innerHTML = '';
+    clearQuickReplies();
+    updateStageIndicator(0);
+    updateProgressBar();
+
+    // 4. 重新开始对话
+    runStage0(0);
+  } catch(e) {
+    // 兜底：如果上面任何一步出问题，直接刷新页面
+    location.reload();
+  }
+}
+
+// ============================================================================
+// SECTION 9: INITIALIZATION
+// ============================================================================
+
+// Click modal overlay to close
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.style.display = 'none';
+  }
+});
+
+// Keyboard shortcut for send
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey && document.activeElement === chatInput) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Initialize
+window.addEventListener('load', function() {
+  appData = loadData();
+
+  // Restore theme preference
+  try {
+    const savedTheme = localStorage.getItem('gaokao-theme');
+    if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  } catch(e) {}
+  updateThemeBtn();
+  updateProgressBar();
+
+  startConversation();
+
+  // Focus input
+  chatInput.focus();
+});
+
+// Auto-save on page unload
+window.addEventListener('beforeunload', function() {
+  saveData(appData);
+});
+</script>
+</body>
+</html>
